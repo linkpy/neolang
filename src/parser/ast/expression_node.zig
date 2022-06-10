@@ -101,8 +101,8 @@ pub const ExpressionNode = union(enum) {
     self: ExpressionNode
   ) ?Type {
     return switch( self ) {
-      .integer => Type.Integer,
-      .string => Type.String,
+      .integer => Type.CtInt,
+      .string => null,
       .identifier => |id| id.getType(),
       .binary => |bin| bin.getType(),
       .unary => |una| una.getType(),

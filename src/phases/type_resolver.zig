@@ -48,12 +48,6 @@ pub fn resolveConstant(
         .constantness = cst.value.getConstantness(),
         .type = typ,
       }};
-
-      std.log.info("Resolved constant: {s} to be {} (constness: {s})", .{
-        cst.name.parts[0],
-        entry.data.expression.type,
-        @tagName(entry.data.expression.constantness)
-      });
     }
   }
 }
@@ -119,15 +113,15 @@ pub fn resolveBinaryExpression(
 
   if( bin.left.getType() ) |left_type| {
     if( bin.right.getType() ) |right_type| {
-      if( left_type.isSameAs(right_type) ) {
+      if( left_type.getBinaryOperationResultType(bin.operator, right_type) ) |typ| {
         bin.constantness = bin.left.getConstantness().mix(bin.right.getConstantness());
-        bin.type = left_type.getBinaryOperationResultType(bin.operator);
+        bin.type = typ;
 
       } else {
 
         try self.diagnostics.pushError(
-          "Types '{s}' and '{s}' are incompatible with each other.", 
-          .{ @tagName(left_type), @tagName(right_type) },
+          "Types '{}' and '{}' cannot be coerced into a type fitting both.", 
+          .{ left_type, right_type },
           bin.getStartLocation(),
           bin.getEndLocation()
         );

@@ -15,7 +15,7 @@ const IntegerNode = @This();
 
 
 /// Value of the integer.
-value: i64,
+value: i64, // TODO use bigint
 
 /// Start location of the integer.
 start_location: Location,
