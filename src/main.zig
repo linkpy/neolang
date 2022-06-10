@@ -32,10 +32,7 @@ pub fn main() anyerror!void {
   var renderer = Renderer.init(std.io.getStdOut().writer(), .{});
   var diags = Diagnostics.init(alloc);
   defer {
-    std.log.info("Diagnostics:", .{});
-    for( diags.list.items ) |*diag| {
-      renderer.render(&file_storage, diag) catch {};
-    }
+    renderer.renderAll(&file_storage, diags) catch {};
 
     diags.deinit();
   }

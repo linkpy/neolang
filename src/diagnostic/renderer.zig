@@ -5,6 +5,7 @@
 
 const std = @import("std");
 const Diagnostic = @import("./diagnostic.zig");
+const Diagnostics = @import("./diagnostics.zig");
 const FileStorage = @import("../storage/file.zig");
 const Writer = std.fs.File.Writer;
 
@@ -32,6 +33,24 @@ pub fn init(
 }
 
 
+
+/// Renders all of the diagnostics.
+///
+/// #### Parameters
+///
+/// - `file_source`: Storage containing the files to retrieve the necessary 
+///   source code.
+/// - `diagnostics`: Diagnostics to render.
+///
+pub fn renderAll(
+  self: *Renderer,
+  file_storage: *FileStorage,
+  diagnostics: Diagnostics
+) !void {
+  for( diagnostics.list.items ) |diag| {
+    try self.render(file_storage, &diag);
+  }
+}
 
 /// Renders the given diagnostic to the console.
 ///
