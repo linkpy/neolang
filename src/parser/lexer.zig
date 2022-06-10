@@ -89,13 +89,13 @@ pub fn readToken(
   while( self.reader.peekChar() ) |char| {
     const token: ?Token = switch( char ) {
       ' ', '\t', '\n', '\r' => self.readWhitespaceToken(),
-      ':' => self.readSingleCharacterToken(.semicolon),
+      ':' => self.readSingleCharacterToken(.colon),
       '(' => self.readSingleCharacterToken(.left_par),
       ')' => self.readSingleCharacterToken(.right_par),
       '[' => self.readSingleCharacterToken(.left_sqr),
       ']' => self.readSingleCharacterToken(.right_sqr),
       ',' => self.readSingleCharacterToken(.comma),
-      '.' => self.readSingleCharacterToken(.dot),
+      ';' => self.readSingleCharacterToken(.semicolon),
       '!' => self.readSingleCharacterToken(.exclam),
       '+' => self.readSingleCharacterToken(.plus),
       '-' => self.readSingleCharacterToken(.minus),
@@ -412,12 +412,12 @@ pub const Token = struct {
     // spaces
     whitespace,
     // symbols
-    semicolon,
+    colon,
     left_par,
     right_par,
     left_sqr,
     right_sqr,
-    dot,
+    semicolon,
     comma,
     exclam,
     // operator symbols
