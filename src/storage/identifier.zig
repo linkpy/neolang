@@ -236,7 +236,7 @@ pub const Entry = struct {
 
     pub const Expression = struct {
       const ast_flags = @import("../parser/ast/flags.zig");
-      const Type = @import("../type/type.zig");
+      const Type = @import("../type/type.zig").Type;
 
       constantness: ast_flags.ConstantExpressionFlag = .unknown,
       type: ?Type,

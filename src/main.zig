@@ -12,6 +12,7 @@ const Parser = @import("./parser/parser.zig");
 const ast = @import("./parser/ast.zig");
 
 const IdResolver = @import("./phases/identifier_resolver.zig");
+const TypeResolver = @import("./phases/type_resolver.zig");
 
 
 
@@ -50,13 +51,19 @@ pub fn main() anyerror!void {
   var cst2 = try parser.parseConstant();
   defer cst2.deinit(alloc);
 
-  var resolver = IdResolver.init(&diags, &id_storage);
+  var id_resolver = IdResolver.init(&diags, &id_storage);
   var scope = id_storage.scope();
   defer scope.deinit();
 
-  try resolver.resolveConstant(&cst0, &scope);
-  try resolver.resolveConstant(&cst1, &scope);
-  try resolver.resolveConstant(&cst2, &scope);
+  try id_resolver.resolveConstant(&cst0, &scope);
+  try id_resolver.resolveConstant(&cst1, &scope);
+  try id_resolver.resolveConstant(&cst2, &scope);
+
+
+  var type_resolver = TypeResolver.init(&diags, &id_storage);
+  try type_resolver.resolveConstant(&cst0);
+  try type_resolver.resolveConstant(&cst1);
+  try type_resolver.resolveConstant(&cst2);
 }
 
 

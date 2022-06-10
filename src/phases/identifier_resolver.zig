@@ -70,7 +70,7 @@ pub fn resolveConstant(
   try self.resolveExpression(&cst.value, scope);
 
   if( id ) |i| {
-    var entry = scope.storage.getEntry(i).?;
+    var entry = self.identifiers.getEntry(i).?;
     entry.is_being_defined = false;
   }
 }
@@ -108,7 +108,7 @@ pub fn resolveIdentifier(
   } else {
 
     if( scope.getBinding(id_expr.parts[0]) ) |id| {
-      const entry = scope.storage.getEntry(id).?;
+      const entry = self.identifiers.getEntry(id).?;
 
       if( entry.is_being_defined ) {
         try self.diagnostics.pushError(
