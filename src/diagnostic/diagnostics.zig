@@ -61,6 +61,26 @@ pub fn pushError(
   try self.pushDiagnostic(.error_, msg, start_loc, end_loc, false);
 }
 
+/// Pushes aa note diagnostic. Uses `std.fmt.format` for formatting.
+///
+/// #### Parameters
+/// 
+/// - `fmt`: Format string for the message.
+/// - `args`: Tuple for the format string arguments.
+/// - `start_loc`: Start location of the diagnostic.
+/// - `end_loc`: End location of the diagnostic.
+///
+pub fn pushNote(
+  self: *Diagnostics,
+  comptime fmt: []const u8,
+  args: anytype,
+  start_loc: Location,
+  end_loc: Location,
+) Error!void {
+  var msg = try std.fmt.allocPrint(self.alloc, fmt, args);
+  try self.pushDiagnostic(.note, msg, start_loc, end_loc, false);
+}
+
 /// Pushes a generic diagnostic.
 ///
 /// #### Parameters 

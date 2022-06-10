@@ -67,7 +67,7 @@ pub fn parseConstant(
 
   // in case of error, fast-forward until the dot at the end of the const 
   // declaration
-  errdefer self.skipTokensUntil(.dot) catch {};
+  errdefer self.skipTokensUntil(.semicolon) catch {};
 
   try self.skipWhitespace();
 
@@ -94,13 +94,13 @@ pub fn parseConstant(
 
   try self.skipWhitespace();
 
-  const dot_token = try self.expectToken(.dot);
+  const semicolon_token = try self.expectToken(.semicolon);
 
   return ast.ConstantNode {
     .name = id_node,
     .value = value_node,
     .start_location = const_token.start_location,
-    .end_location = dot_token.end_location,
+    .end_location = semicolon_token.end_location,
   };
 }
 
@@ -430,15 +430,30 @@ pub fn parseExpressionAtom(
 pub fn parseIdentifier(
   self: *Parser
 ) Error!ast.IdentifierNode {
-  var list = std.ArrayList(Token).init(self.alloc);
-  errdefer list.deinit();
+  var list = std.ArrayList([]u8).init(self.alloc);
+  errdefer {
+    for( list.items ) |item| self.alloc.free(item);
+
+    list.deinit();
+  }
+
+  var start_loc: Location = undefined;
+  var end_loc: Location = undefined;
 
   while( true ) {
     const token = try self.expectToken(.identifier);
-    try list.append(token);
 
-    if( !try self.checkToken(.slash) )
+    if( list.items.len == 0 )
+      start_loc = token.start_location;
+
+    try list.append(
+      try self.alloc.dupe(u8, token.value)
+    );
+
+    if( !try self.checkToken(.slash) ) {
+      end_loc = token.end_location;
       break;
+    }
     
     // skip the /
     self.nextToken();
@@ -446,6 +461,8 @@ pub fn parseIdentifier(
 
   return ast.IdentifierNode {
     .parts = list.toOwnedSlice(),
+    .start_location = start_loc,
+    .end_location = end_loc
   };
 }
 

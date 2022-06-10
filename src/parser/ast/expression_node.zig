@@ -2,6 +2,7 @@
 const std = @import("std");
 const Location = @import("../../diagnostic/location.zig");
 const Token = @import("../lexer.zig").Token;
+const Type = @import("../../type/type.zig").Type;
 
 const flags = @import("./flags.zig");
 const IdentifierNode = @import("./identifier_node.zig");
@@ -53,14 +54,14 @@ pub const ExpressionNode = union(enum) {
   pub fn getStartLocation(
     self: ExpressionNode
   ) Location {
-    switch( self ) {
+    return switch( self ) {
       .identifier => |id| id.getStartLocation(),
       .integer => |int| int.getStartLocation(),
       .string => |str| str.getStartLocation(),
       .binary => |bin| bin.getStartLocation(),
-      .unary => |*un| un.getStartLocation(),
-      .call => |*call| call.getStartLocation(),
-    }
+      .unary => |un| un.getStartLocation(),
+      .call => |call| call.getStartLocation(),
+    };
   }
 
   /// Gets the end location of the node.
@@ -68,14 +69,14 @@ pub const ExpressionNode = union(enum) {
   pub fn getEndLocation(
     self: ExpressionNode
   ) Location {
-    switch( self ) {
+    return switch( self ) {
       .identifier => |id| id.getEndLocation(),
       .integer => |int| int.getEndLocation(),
       .string => |str| str.getEndLocation(),
       .binary => |bin| bin.getEndLocation(),
-      .unary => |*un| un.getEndLocation(),
-      .call => |*call| call.getEndLocation(),
-    }
+      .unary => |un| un.getEndLocation(),
+      .call => |call| call.getEndLocation(),
+    };
   }
 
 
@@ -89,9 +90,25 @@ pub const ExpressionNode = union(enum) {
       .integer, .string => .constant,
       .identifier => |id| id.getConstantness(),
       .binary => |bin| bin.getConstantness(),
-      .unary => |*un| un.getConstantness(),
-      .call => |*call| call.getConstantness(),
+      .unary => |un| un.getConstantness(),
+      .call => |call| call.getConstantness(),
     };
   }
+
+  /// Gets the type of the expression node.
+  ///
+  pub fn getType(
+    self: ExpressionNode
+  ) ?Type {
+    return switch( self ) {
+      .integer => Type.Integer,
+      .string => Type.String,
+      .identifier => |id| id.getType(),
+      .binary => |bin| bin.getType(),
+      .unary => |una| una.getType(),
+      .call => |call| call.getType(),
+    };
+  }
+
 };
 

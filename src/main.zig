@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const FileStorage = @import("./storage/file.zig");
+const IdStorage = @import("./storage/identifier.zig");
 
 const Diagnostic = @import("./diagnostic/diagnostic.zig");
 const Diagnostics = @import("./diagnostic/diagnostics.zig");
@@ -9,6 +10,8 @@ const Renderer = @import("./diagnostic/renderer.zig");
 const Lexer = @import("./parser/lexer.zig");
 const Parser = @import("./parser/parser.zig");
 const ast = @import("./parser/ast.zig");
+
+const IdResolver = @import("./phases/identifier_resolver.zig");
 
 
 
@@ -21,41 +24,42 @@ pub fn main() anyerror!void {
   var file_storage = FileStorage.init(alloc);
   defer file_storage.deinit();
 
+  var id_storage = IdStorage.init(alloc);
+  defer id_storage.deinit();
+
   var file_id = try file_storage.addDiskFile("sketchs/1.nl");
 
   var renderer = Renderer.init(std.io.getStdOut().writer(), .{});
   var diags = Diagnostics.init(alloc);
-  defer diags.deinit();
-
-  var lexer = try Lexer.fromFileStorage(&file_storage, file_id, &diags);
-  var parser = Parser.init(alloc, &lexer);
-
-  if( parser.parseConstant() ) |*cst| {
-    std.log.info("Parsing: OK", .{});
-    defer cst.deinit(alloc);
-
-    try printCst(alloc, cst, 0);
-
-    if( diags.list.items.len > 0 ) {
-      std.log.info("Diagnostics:", .{});
-      for( diags.list.items ) |*diag| {
-        renderer.render(&file_storage, diag) catch {};
-      }  
-    } else {
-      std.log.info("Constantness of the value: {s}", .{ 
-        @tagName(cst.value.getConstantness())
-      });
-    }
-  } else |err| {
-    std.log.err("Parsing: NOK, {s}", .{@errorName(err)});
-
+  defer {
+    std.log.info("Diagnostics:", .{});
     for( diags.list.items ) |*diag| {
       renderer.render(&file_storage, diag) catch {};
     }
 
-    diags.clear();
+    diags.deinit();
   }
 
+  var lexer = try Lexer.fromFileStorage(&file_storage, file_id, &diags);
+  var parser = Parser.init(alloc, &lexer);
+
+
+  var cst0 = try parser.parseConstant();
+  defer cst0.deinit(alloc);
+
+  var cst1 = try parser.parseConstant();
+  defer cst1.deinit(alloc);
+
+  var cst2 = try parser.parseConstant();
+  defer cst2.deinit(alloc);
+
+  var resolver = IdResolver.init(&diags, &id_storage);
+  var scope = id_storage.scope();
+  defer scope.deinit();
+
+  try resolver.resolveConstant(&cst0, &scope);
+  try resolver.resolveConstant(&cst1, &scope);
+  try resolver.resolveConstant(&cst2, &scope);
 }
 
 
@@ -104,7 +108,7 @@ fn printIdentifier(
   try list.appendSlice("IdentifierNode( ");
 
   for( id.parts ) |part, j| {
-    try list.appendSlice(part.value);
+    try list.appendSlice(part);
 
     if( j != id.parts.len - 1 )
       try list.append('/');

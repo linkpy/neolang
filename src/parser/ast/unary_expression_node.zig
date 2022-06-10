@@ -6,6 +6,7 @@
 const std = @import("std");
 const Location = @import("../../diagnostic/location.zig");
 const Token = @import("../lexer.zig").Token;
+const Type = @import("../../type/type.zig").Type;
 
 const flags = @import("./flags.zig");
 const ExpressionNode = @import("./expression_node.zig").ExpressionNode;
@@ -22,6 +23,11 @@ operator: Operator,
 
 /// Start location of the node.
 start_location: Location,
+
+/// Constantness of the expression node.
+constantness: flags.ConstantExpressionFlag = .unknown,
+/// Type of the expression node.
+type: ?Type = null,
 
 
 
@@ -66,6 +72,14 @@ pub fn getConstantness(
   self: UnaryExpressionNode
 ) flags.ConstantExpressionFlag {
   return self.child.getConstantness();
+}
+
+/// Gets the type of the expression node.
+///
+pub fn getType(
+  self: UnaryExpressionNode
+) ?Type {
+  return self.child.getType();
 }
 
 

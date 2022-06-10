@@ -8,6 +8,8 @@
 
 const std = @import("std");
 const Location = @import("../../diagnostic/location.zig");
+const Type = @import("../../type/type.zig").Type;
+const IdentifierID = @import("../../storage/identifier.zig").IdentifierID;
 const Token = @import("../lexer.zig").Token;
 
 const flags = @import("./flags.zig");
@@ -18,10 +20,21 @@ const IdentifierNode = @This();
 
 
 /// Segments of the identifier.
-parts: []Token,
+parts: [][]u8,
+
+/// Start location of the identifier.
+start_location: Location,
+/// End location of the identifier.
+end_location: Location,
+
+/// Identifier ID from the identifier storage.
+/// Used by the identifier resolver.
+identifier_id: ?IdentifierID = null,
 
 /// Cached constantness of the identifier.
 constantness: flags.ConstantExpressionFlag = .unknown,
+/// Cached type of the identifier.
+type: ?Type = null,
 
 
 
@@ -35,6 +48,9 @@ pub fn deinit(
   self: *IdentifierNode,
   alloc: Allocator
 ) void {
+  for( self.parts ) |part|
+    alloc.free(part);
+
   alloc.free(self.parts);
 }
 
@@ -45,7 +61,7 @@ pub fn deinit(
 pub fn getStartLocation(
   self: IdentifierNode
 ) Location {
-  return self.parts[0].start_location;
+  return self.start_location;
 }
 
 /// Gets the end location of the node.
@@ -53,7 +69,7 @@ pub fn getStartLocation(
 pub fn getEndLocation(
   self: IdentifierNode
 ) Location {
-  return self.parts[self.parts.len - 1].end_location;
+  return self.end_location;
 }
 
 
@@ -65,6 +81,14 @@ pub fn getConstantness(
 ) flags.ConstantExpressionFlag {
   _ = self;
   return self.constantness;
+}
+
+/// Gets the type of the expression node.
+///
+pub fn getType(
+  self: IdentifierNode
+) ?Type {
+  return self.type;
 }
 
 
