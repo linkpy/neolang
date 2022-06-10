@@ -1,3 +1,7 @@
+/// Structure used to resolves identifiers in the AST.
+///
+
+
 
 const std = @import("std");
 
@@ -8,14 +12,18 @@ const Diagnostics = @import("../diagnostic/diagnostics.zig");
 const IdentifierResolver = @This();
 
 
+
+/// Diagnostics used in case of error.
 diagnostics: *Diagnostics,
-
+/// Registered identifiers.
 identifiers: *IdentifierStorage,
-
+/// Number of error that occured during resolving.
 errors: usize, 
 
 
 
+/// Initialises a new instance.
+///
 pub fn init(
   diags: *Diagnostics,
   ids: *IdentifierStorage
@@ -29,6 +37,8 @@ pub fn init(
 
 
 
+/// Resolves the identifiers in a constant declaration.
+///
 pub fn resolveConstant(
   self: *IdentifierResolver,
   cst: *ast.ConstantNode,
@@ -67,6 +77,8 @@ pub fn resolveConstant(
 
 
 
+/// Resolves the identifiers in an expression node.
+///
 pub fn resolveExpression(
   self: *IdentifierResolver,
   expr: *ast.ExpressionNode,
@@ -84,6 +96,8 @@ pub fn resolveExpression(
   }
 }
 
+/// Resolves the identifier in an identifier node.
+///
 pub fn resolveIdentifier(
   self: *IdentifierResolver,
   id_expr: *ast.IdentifierNode,
@@ -127,6 +141,8 @@ pub fn resolveIdentifier(
   }
 }
 
+/// Resolves the identifiers in a function call expression node.
+///
 pub fn resolveCallExpression(
   self: *IdentifierResolver,
   call: *ast.CallExpressionNode,

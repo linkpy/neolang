@@ -1,3 +1,7 @@
+/// Struct used to store identifier-related informations.
+///
+
+
 
 const std = @import("std");
 const Location = @import("../diagnostic/location.zig");
@@ -10,13 +14,18 @@ const BindingMap = std.StringHashMap(IdentifierID);
 
 
 
+/// Allocator used.
 alloc: Allocator,
 
+/// Next available ID.
 next_id: usize = 0,
+/// Identifiers registered.
 identifiers: IdentifierMap,
 
 
 
+/// Initialises a new instance.
+///
 pub fn init(
   alloc: Allocator
 ) IdentifierStorage {
@@ -27,6 +36,8 @@ pub fn init(
   };
 }
 
+/// Deinitialises the instance, freeing up memory.
+///
 pub fn deinit(
   self: *IdentifierStorage
 ) void {
@@ -35,6 +46,8 @@ pub fn deinit(
 
 
 
+/// Generates a new identifier ID.
+///
 pub fn newID(
   self: *IdentifierStorage
 ) Allocator.Error!IdentifierID {
@@ -50,6 +63,8 @@ pub fn newID(
   return entry.id;
 }
 
+/// Generates a new identifier ID and returns a pointer to the identifier entry.
+/// 
 pub fn newEntry(
   self: *IdentifierStorage
 ) Allocator.Error!*Entry {
@@ -60,6 +75,8 @@ pub fn newEntry(
 
 
 
+/// Gets the entry associated with the given identifier ID.
+///
 pub fn getEntry(
   self: *IdentifierStorage,
   id: IdentifierID
@@ -69,6 +86,8 @@ pub fn getEntry(
 
 
 
+/// Creates a new root binding scope.
+///
 pub fn scope(
   self: *IdentifierStorage
 ) Scope {
@@ -81,16 +100,27 @@ pub fn scope(
 
 
 
+/// ID used to represent an identifier.
+///
 pub const IdentifierID = usize;
 
+
+
+/// Struct representing a binding scope.
+///
 pub const Scope = struct {
+  /// Identifier storage.
   storage: *IdentifierStorage,
+  /// Parent scope of this one.
   parent_scope: ?*const Scope,
 
+  /// Registered bindings.
   bindings: BindingMap,
 
 
 
+  /// Deinitialises the scope, freeing up memory.
+  ///
   pub fn deinit(
     self: *Scope
   ) void {
@@ -99,6 +129,8 @@ pub const Scope = struct {
 
 
 
+  /// Creates a new child scope, inheriting the bindings of the current scope.
+  ///
   pub fn scope(
     self: *const Scope
   ) Scope {
@@ -111,6 +143,8 @@ pub const Scope = struct {
 
 
 
+  /// Checks if the current scope (or one of its parent) has the given binding.
+  ///
   pub fn hasBinding(
     self: Scope,
     name: []const u8,
@@ -124,6 +158,8 @@ pub const Scope = struct {
     return false;
   }
 
+  /// Gets the binding from the current scope (or one of its parent).
+  ///
   pub fn getBinding(
     self: Scope,
     name: []const u8
@@ -139,6 +175,8 @@ pub const Scope = struct {
 
 
 
+  /// Creates a new binding, returning the identifier ID.
+  ///
   pub fn bindID(
     self: *Scope,
     name: []const u8
@@ -152,6 +190,8 @@ pub const Scope = struct {
     return id;
   }
 
+  /// Creates a new binding, returning the identifier entry.
+  ///
   pub fn bindEntry(
     self: *Scope,
     name: []const u8
@@ -169,14 +209,41 @@ pub const Scope = struct {
 
 
 
+/// Structure associated with each identifier ID.
+///
 pub const Entry = struct {
+  /// ID associated with the entry.
   id: IdentifierID,
 
+  /// Starting location of the identifier's source.
   start_location: Location,
+  /// Ending location of the identifier's source.
   end_location: Location,
 
+  /// If true, the identifier is being defined (used for recursive declarations).
   is_being_defined: bool = false,
+
+  /// Additional data associated with the identifier.
+  data: Data = .{ .none = {} },
+
+
+
+  pub const Data = union(enum) {
+    none: void,
+    expression: Expression,
+
+
+
+    pub const Expression = struct {
+      const ast_flags = @import("../parser/ast/flags.zig");
+      const Type = @import("../type/type.zig");
+
+      constantness: ast_flags.ConstantExpressionFlag = .unknown,
+      type: ?Type,
+    };
+  };
 };
+
 
 
 
