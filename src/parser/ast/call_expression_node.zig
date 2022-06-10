@@ -7,6 +7,7 @@ const std = @import("std");
 const Location = @import("../../diagnostic/location.zig");
 const Token = @import("../lexer.zig").Token;
 
+const flags = @import("./flags.zig");
 const ExpressionNode = @import("./expression_node.zig").ExpressionNode;
 
 const Allocator = std.mem.Allocator;
@@ -22,6 +23,9 @@ arguments: []ExpressionNode,
 /// Location of the exclamation point.
 /// Undefined if the node has arguments.
 exclam_location: Location,
+
+/// Cached constantness of the node.
+constantness: flags.ConstantExpressionFlag = .unknown,
 
 
 
@@ -61,4 +65,14 @@ pub fn getEndLocation(
     return self.exclam_location;
   }
   return self.arguments[self.arguments.len - 1].getEndLocation();
+}
+
+
+
+/// Gets the constantness of the expression node.
+///
+pub fn getConstantness(
+  self: CallExpressionNode
+) flags.ConstantExpressionFlag {
+  return self.constantness;
 }

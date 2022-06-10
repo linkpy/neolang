@@ -11,3 +11,6 @@ pub const UnaryExpressionNode = @import("./ast/unary_expression_node.zig");
 pub const CallExpressionNode = @import("./ast/call_expression_node.zig");
 pub const ExpressionNode = @import("./ast/expression_node.zig").ExpressionNode;
 pub const ConstantNode = @import("./ast/constant_node.zig");
+
+const flags = @import("./flags");
+pub const ConstantExpressionFlag = flags.ConstantExpressionFlag;

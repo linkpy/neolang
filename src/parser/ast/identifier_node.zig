@@ -10,6 +10,8 @@ const std = @import("std");
 const Location = @import("../../diagnostic/location.zig");
 const Token = @import("../lexer.zig").Token;
 
+const flags = @import("./flags.zig");
+
 const Allocator = std.mem.Allocator;
 const IdentifierNode = @This();
 
@@ -17,6 +19,9 @@ const IdentifierNode = @This();
 
 /// Segments of the identifier.
 parts: []Token,
+
+/// Cached constantness of the identifier.
+constantness: flags.ConstantExpressionFlag = .unknown,
 
 
 
@@ -49,6 +54,17 @@ pub fn getEndLocation(
   self: IdentifierNode
 ) Location {
   return self.parts[self.parts.len - 1].end_location;
+}
+
+
+
+/// Gets the constantness of the expression node.
+///
+pub fn getConstantness(
+  self: IdentifierNode
+) flags.ConstantExpressionFlag {
+  _ = self;
+  return self.constantness;
 }
 
 

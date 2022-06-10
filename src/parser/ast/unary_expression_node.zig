@@ -7,6 +7,7 @@ const std = @import("std");
 const Location = @import("../../diagnostic/location.zig");
 const Token = @import("../lexer.zig").Token;
 
+const flags = @import("./flags.zig");
 const ExpressionNode = @import("./expression_node.zig").ExpressionNode;
 
 const Allocator = std.mem.Allocator;
@@ -55,6 +56,16 @@ pub fn getEndLocation(
   self: UnaryExpressionNode
 ) Location {
   return self.child.getEndLocation();
+}
+
+
+
+/// Gets the constantness of the expression node.
+///
+pub fn getConstantness(
+  self: UnaryExpressionNode
+) flags.ConstantExpressionFlag {
+  return self.child.getConstantness();
 }
 
 

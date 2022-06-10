@@ -3,6 +3,7 @@ const std = @import("std");
 const Location = @import("../../diagnostic/location.zig");
 const Token = @import("../lexer.zig").Token;
 
+const flags = @import("./flags.zig");
 const IdentifierNode = @import("./identifier_node.zig");
 const IntegerNode = @import("./integer_node.zig");
 const StringNode = @import("./string_node.zig");
@@ -77,5 +78,20 @@ pub const ExpressionNode = union(enum) {
     }
   }
 
+
+
+  /// Gets the constantness of the expression node.
+  /// 
+  pub fn getConstantness(
+    self: ExpressionNode
+  ) flags.ConstantExpressionFlag {
+    return switch( self ) {
+      .integer, .string => .constant,
+      .identifier => |id| id.getConstantness(),
+      .binary => |bin| bin.getConstantness(),
+      .unary => |*un| un.getConstantness(),
+      .call => |*call| call.getConstantness(),
+    };
+  }
 };
 

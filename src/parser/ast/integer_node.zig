@@ -7,6 +7,8 @@ const std = @import("std");
 const Location = @import("../../diagnostic/location.zig");
 const Token = @import("../lexer.zig").Token;
 
+const flags = @import("./flags.zig");
+
 const Allocator = std.mem.Allocator;
 const IntegerNode = @This();
 

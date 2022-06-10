@@ -31,42 +31,23 @@ pub fn main() anyerror!void {
   var parser = Parser.init(alloc, &lexer);
 
   if( parser.parseConstant() ) |*cst| {
-    std.log.info("Parsing the first constant: OK", .{});
+    std.log.info("Parsing: OK", .{});
     defer cst.deinit(alloc);
 
     try printCst(alloc, cst, 0);
-  } else |err| {
-    std.log.err("Parsing the first constant: NOK, {s}", .{@errorName(err)});
 
-    for( diags.list.items ) |*diag| {
-      renderer.render(&file_storage, diag) catch {};
+    if( diags.list.items.len > 0 ) {
+      std.log.info("Diagnostics:", .{});
+      for( diags.list.items ) |*diag| {
+        renderer.render(&file_storage, diag) catch {};
+      }  
+    } else {
+      std.log.info("Constantness of the value: {s}", .{ 
+        @tagName(cst.value.getConstantness())
+      });
     }
-
-    diags.clear();
-  }
-
-  if( parser.parseConstant() ) |*cst| {
-    std.log.info("Parsing the second constant: OK", .{});
-    defer cst.deinit(alloc);
-
-    try printCst(alloc, cst, 0);
   } else |err| {
-    std.log.err("Parsing the second constant: NOK, {s}", .{@errorName(err)});
-
-    for( diags.list.items ) |*diag| {
-      renderer.render(&file_storage, diag) catch {};
-    }
-
-    diags.clear();
-  }
-
-  if( parser.parseConstant() ) |*cst| {
-    std.log.info("Parsing the third constant: OK", .{});
-    defer cst.deinit(alloc);
-
-    try printCst(alloc, cst, 0);
-  } else |err| {
-    std.log.err("Parsing the third constant: NOK, {s}", .{@errorName(err)});
+    std.log.err("Parsing: NOK, {s}", .{@errorName(err)});
 
     for( diags.list.items ) |*diag| {
       renderer.render(&file_storage, diag) catch {};
