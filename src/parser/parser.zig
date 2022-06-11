@@ -407,10 +407,8 @@ pub fn parseExpressionAtom(
       return ast.ExpressionNode { .string = str };
     },
     .left_par => {
-      self.nextToken();
-      const expr = try self.parseCallExpression();
-      _ = try self.expectToken(.right_par);
-      return expr;
+      const grp = try self.parseGroup();
+      return ast.ExpressionNode { .group = grp };
     },
     else => {
       try self.diagnostics.pushError(
@@ -516,8 +514,6 @@ pub fn parseInteger(
           tok.start_location,
           tok.end_location
         );
-
-        return Error.invalid_integer_type_flag;
       }
     }
   }
@@ -544,6 +540,25 @@ pub fn parseString(
     .value = value,
     .start_location = token.start_location,
     .end_location = token.end_location,
+  };
+}
+
+/// Parses a group expression node.
+///
+pub fn parseGroup(
+  self: *Parser
+) Error!ast.GroupExpressionNode {
+  const start_loc = (try self.expectToken(.left_par)).start_location;
+
+  var expr = try self.parseCallExpression();
+  errdefer expr.deinit(self.alloc);
+
+  const end_loc = (try self.expectToken(.right_par)).end_location;
+
+  return ast.GroupExpressionNode {
+    .child = try self.heapify(expr),
+    .start_location = start_loc,
+    .end_location = end_loc,
   };
 }
 
@@ -748,5 +763,4 @@ pub const Error = error {
   unexpected_token,
   unexpected_end_of_file,
   unexpected_segmented_identifier,
-  invalid_integer_type_flag,
 } || Diagnostics.Error || Lexer.Error;

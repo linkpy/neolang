@@ -97,6 +97,7 @@ fn printExpr(
     .binary => |*bin| try printBin(alloc, bin, i),
     .unary => |*un| try printUna(alloc, un, i),
     .call => |*call| try printCall(alloc, call, i),
+    .group => |*grp| try printExpr(alloc, grp.child, i),
   }
 }
 

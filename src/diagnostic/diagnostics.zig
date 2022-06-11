@@ -58,7 +58,7 @@ pub fn pushError(
   end_loc: Location,
 ) Error!void {
   var msg = try std.fmt.allocPrint(self.alloc, fmt, args);
-  try self.pushDiagnostic(.error_, msg, start_loc, end_loc, false);
+  try self.pushDiagnostic(.error_, msg, true, start_loc, end_loc, false);
 }
 
 /// Pushes aa note diagnostic. Uses `std.fmt.format` for formatting.
@@ -74,11 +74,33 @@ pub fn pushNote(
   self: *Diagnostics,
   comptime fmt: []const u8,
   args: anytype,
+  primary: bool,
   start_loc: Location,
   end_loc: Location,
 ) Error!void {
   var msg = try std.fmt.allocPrint(self.alloc, fmt, args);
-  try self.pushDiagnostic(.note, msg, start_loc, end_loc, false);
+  try self.pushDiagnostic(.note, msg, primary, start_loc, end_loc, false);
+}
+
+/// Pushes a verbose diagnostic. Uses `std.fmt.format` for formatting.
+///
+/// #### Parameters
+/// 
+/// - `fmt`: Format string for the message.
+/// - `args`: Tuple for the format string arguments.
+/// - `start_loc`: Start location of the diagnostic.
+/// - `end_loc`: End location of the diagnostic.
+///
+pub fn pushVerbose(
+  self: *Diagnostics,
+  comptime fmt: []const u8,
+  args: anytype,
+  primary: bool,
+  start_loc: Location,
+  end_loc: Location,
+) Error!void {
+  var msg = try std.fmt.allocPrint(self.alloc, fmt, args);
+  try self.pushDiagnostic(.verbose, msg, primary, start_loc, end_loc, false);
 }
 
 /// Pushes a generic diagnostic.
@@ -95,6 +117,7 @@ pub fn pushDiagnostic(
   self: *Diagnostics,
   kind: Diagnostic.Kind,
   msg: []const u8,
+  primary: bool,
   start_loc: Location,
   end_loc: Location,
   dupe_msg: bool,
@@ -102,6 +125,7 @@ pub fn pushDiagnostic(
   const diag = Diagnostic {
     .kind = kind,
     .message = if( dupe_msg ) try self.alloc.dupe(u8, msg) else msg,
+    .primary = primary,
     .start_location = start_loc,
     .end_location = end_loc
   }; 

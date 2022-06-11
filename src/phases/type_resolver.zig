@@ -65,11 +65,12 @@ pub fn resolveExpression(
   expr: *ast.ExpressionNode
 ) Error!void {
   switch( expr.* ) {
+    .string, .integer => {},
     .identifier => |*id| try self.resolveIdentifier(id),
     .unary => |*una| try self.resolveUnaryExpression(una),
     .binary => |*bin| try self.resolveBinaryExpression(bin),
     .call => @panic("NYI"),
-    else => {},
+    .group => |*grp| try self.resolveExpression(grp.child),
   }
 }
 
@@ -154,8 +155,35 @@ pub fn resolveBinaryExpression(
           bin.getStartLocation(),
           bin.getEndLocation()
         );
+
+        try self.diagnostics.pushNote(
+          "The left-hand side of the expression is of type '{}'.",
+          .{ left_type }, false, 
+          bin.left.getStartLocation(),
+          bin.left.getEndLocation(),
+        );
+
+        try self.diagnostics.pushNote(
+          "The right-hand side of the expression is of type '{}'.",
+          .{ right_type }, false,
+          bin.right.getStartLocation(),
+          bin.right.getEndLocation(),
+        );
+
       }
+    } else {
+      try self.diagnostics.pushVerbose(
+        "No attached type.", .{}, false,
+        bin.right.getStartLocation(), 
+        bin.right.getEndLocation(),
+      );
     }
+  } else {
+    try self.diagnostics.pushVerbose(
+      "No attached type.", .{}, false,
+      bin.left.getStartLocation(), 
+      bin.left.getEndLocation(),
+    );
   }
 }
 

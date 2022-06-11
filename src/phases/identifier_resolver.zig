@@ -85,6 +85,7 @@ pub fn resolveExpression(
   scope: *IdentifierStorage.Scope
 ) Error!void {
   switch( expr.* ) {
+    .integer, .string => {},
     .identifier => |*id| try self.resolveIdentifier(id, scope),
     .unary => |*una| try self.resolveExpression(una.child, scope),
     .binary => |*bin| {
@@ -92,7 +93,7 @@ pub fn resolveExpression(
       try self.resolveExpression(bin.right, scope);
     },
     .call => |*call| try self.resolveCallExpression(call, scope),
-    else => {},
+    .group => |*grp| try self.resolveExpression(grp.child, scope),
   }
 }
 
@@ -120,7 +121,7 @@ pub fn resolveIdentifier(
 
         try self.diagnostics.pushNote(
           "Recursive declaration of this:",
-          .{},
+          .{}, false,
           entry.start_location, 
           entry.end_location
         );

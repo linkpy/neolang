@@ -67,7 +67,6 @@ pub fn render(
 ) !void {
   try self.renderDiagnosticHeader(file_storage, diagnostic);
   try self.renderDiagnosticCode(file_storage, diagnostic);
-  try self.writer.writeByte('\n');
 }
 
 /// Renders the header of the given diagnostic.
@@ -147,11 +146,12 @@ fn renderDiagnosticCode(
   var lines = try file_storage.getLines(diagnostic.start_location.file, true);
   defer file_storage.alloc.free(lines);
 
-  const start_line = diagnostic.start_location.line -| 1;
+  const offset: usize = if( diagnostic.primary ) 1 else 0;
+  const start_line = diagnostic.start_location.line -| offset;
   const end_line = if( diagnostic.end_location.line == lines.len - 1 )
     diagnostic.end_location.line
   else
-    diagnostic.end_location.line + 1;
+    diagnostic.end_location.line + offset;
   
   var i: usize = start_line;
   while( i <= end_line ) : ( i += 1 ) {

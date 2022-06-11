@@ -14,6 +14,8 @@ const Diagnostic = @This();
 kind: Kind,
 /// Message associated. Held in heap.
 message: []const u8,
+/// Primary diagnostic.
+primary: bool,
 
 /// Start location of the diagnostic in the code.
 start_location: Location,
