@@ -1,36 +1,67 @@
-
 const std = @import("std");
-
 const ast = @import("../parser/ast.zig");
+
+const IntegerType = @import("./integer.zig");
+
 const BinOp = ast.BinaryExpressionNode.Operator;
 const UnaOp = ast.UnaryExpressionNode.Operator;
 
 
 
-pub const Type = union(Type.Kind) {
-  pub const CtInt = Type { .integer = .{ .size = null, .signed = true }};
+/// Structure representing a type.
+///
+pub const Type = union(enum) {
+  /// Compile time integer.
+  pub const CtInt = newInt(.dynamic, true);
 
-  pub const I1 = Type { .integer = .{ .size = 1, .signed = true } };
-  pub const I2 = Type { .integer = .{ .size = 2, .signed = true } };
-  pub const I4 = Type { .integer = .{ .size = 4, .signed = true } };
-  pub const I8 = Type { .integer = .{ .size = 8, .signed = true } };
-  pub const I16 = Type { .integer = .{ .size = 16, .signed = true } };
+  /// 1 byte signed integer.
+  pub const I1 = newInt(.{ .bytes = 1 }, true);
+  /// 2 byte signed integer.
+  pub const I2 = newInt(.{ .bytes = 2 }, true);
+  /// 4 byte signed integer.
+  pub const I4 = newInt(.{ .bytes = 4 }, true);
+  /// 8 byte signed integer.
+  pub const I8 = newInt(.{ .bytes = 8 }, true);
 
-  pub const U1 = Type { .integer = .{ .size = 1, .signed = false } };
-  pub const U2 = Type { .integer = .{ .size = 2, .signed = false } };
-  pub const U4 = Type { .integer = .{ .size = 4, .signed = false } };
-  pub const U8 = Type { .integer = .{ .size = 8, .signed = false } };
-  pub const U16 = Type { .integer = .{ .size = 16, .signed = false } };
+  /// 1 byte unsigned integer.
+  pub const U1 = newInt(.{ .bytes = 1 }, false);
+  /// 2 byte unsigned integer.
+  pub const U2 = newInt(.{ .bytes = 2 }, false);
+  /// 4 byte unsigned integer.
+  pub const U4 = newInt(.{ .bytes = 4 }, false);
+  /// 8 byte unsigned integer.
+  pub const U8 = newInt(.{ .bytes = 8 }, false);
 
+  /// Pointer-sized signed integer.
+  pub const IPtr = newInt(.pointer, true);
+  /// Pointer-sized unsigned integer.
+  pub const UPtr = newInt(.pointer, false);
+
+  /// Boolean.
   pub const Bool = Type{ .boolean = {} };
 
 
 
-  integer: Integer,
+  /// Integer type variant.
+  integer: IntegerType,
+  /// Boolean type variant.
   boolean: void, // TODO add a Bool struct
 
 
 
+  /// Creates a new integer type.
+  ///
+  pub fn newInt(
+    width: IntegerType.Width,
+    signed: bool
+  ) Type {
+    return IntegerType.init(width, signed).toType();
+  }
+
+
+
+  /// Checks if both types are the same.
+  ///
   pub fn isSameAs(
     self: Type,
     other: Type
@@ -43,6 +74,8 @@ pub const Type = union(Type.Kind) {
 
 
 
+  /// Gets the resulting type of the binary operation between both types.
+  ///
   pub fn getBinaryOperationResultType(
     self: Type,
     op: BinOp,
@@ -54,6 +87,8 @@ pub const Type = union(Type.Kind) {
     };
   }
 
+  /// Gets the resulting type of the unary operation on the integer type.
+  ///
   pub fn getUnaryOperationResultType(
     self: Type,
     op: UnaOp
@@ -66,6 +101,8 @@ pub const Type = union(Type.Kind) {
 
 
 
+  /// Formats the instance.
+  ///
   pub fn format(
     self: Type,
     comptime fmt: []const u8, 
@@ -79,124 +116,6 @@ pub const Type = union(Type.Kind) {
   }
 
 
-
-  pub const Kind = enum {
-    integer,
-    boolean, 
-  };
-
-
-  // TODO move to its own file
-  pub const Integer = struct {
-    size: ?usize,
-    signed: bool, 
-
-
-
-    pub fn isSameAsType(
-      self: Integer,
-      other: Type
-    ) bool {
-      return switch( other ) {
-        .integer => |int| self.isSameAs(int),
-        else => false
-      };
-    }
-
-    pub fn isSameAs(
-      self: Integer,
-      other: Integer 
-    ) bool {
-      return self.size == other.size and self.signed == other.signed;
-    }
-
-
-
-    pub fn getBinaryOperationType(
-      self: Integer,
-      op: BinOp,
-      other: Type, 
-    ) ?Type {
-      _ = self;
-
-      return switch( other ) {
-        .integer => |int| self.getBinaryOperationInteger(op, int),
-        else => null
-      };
-    }
-
-    pub fn getBinaryOperationInteger(
-      self: Integer,
-      op: BinOp,
-      other: Integer
-    ) ?Type {
-      switch( op ) {
-        .eq, .ne, .lt, .le, .gt, .ge => {
-          if( self.size == null and other.size == null ) {
-            return Bool;
-
-          } else if( self.size == null and other.size != null ) {
-            return Bool;
-
-          } else if( self.size != null and other.size == null ) {
-            return Bool;
-
-          } else {
-            if( self.signed != other.signed )
-              return null;
-            
-            return Bool;
-          }
-        }, 
-        else => {
-          if( self.size == null and other.size == null ) {
-            return CtInt;
-
-          } else if( self.size == null and other.size != null ) {
-            return Type { .integer = self };
-
-          } else if( self.size != null and other.size == null ) {
-            return Type { .integer = other };
-
-          } else {
-            if( self.signed != other.signed )
-              return null;
-            
-            if( self.size.? > other.size.? )
-              return Type { .integer = self }
-            else
-              return Type { .integer = other };
-          }
-        }
-      }
-    }
-
-    pub fn getUnaryOperationType(
-      self: Integer,
-      op: UnaOp
-    ) ?Type {
-      _ = op;
-
-      return Type { .integer = self };
-    }
-
-
-
-    pub fn format(
-      self: Integer,
-      comptime fmt: []const u8, 
-      options: std.fmt.FormatOptions,
-      writer: anytype
-    ) !void {
-      _ = fmt;
-      _ = options;
-
-      if( self.size ) |size| {
-        const c: u8 = if( self.signed ) 'i' else 'u';
-        try std.fmt.format(writer, "{c}{}", .{ c, size });
-      } else {
-        try writer.writeAll("ct_int");
-      }
-    }
-  };
+  
+  pub const Integer = IntegerType;
 };

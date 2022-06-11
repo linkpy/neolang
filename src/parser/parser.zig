@@ -466,17 +466,67 @@ pub fn parseIdentifier(
   };
 }
 
-/// Parses an integer node, converting it to an actual integer.
+/// Parses an integer node, converting it to an actual integer and parsing its
+/// optional type flag.
 ///
 pub fn parseInteger(
   self: *Parser
 ) Error!ast.IntegerNode {
   const token = try self.expectToken(.integer);
+  var type_flag = ast.IntegerNode.TypeFlag.ct;
+  var end_loc = token.end_location;
+  
+  if( try self.peekToken() ) |tok| {
+    if( tok.kind == .identifier ) {
+      const TypeFlag = ast.IntegerNode.TypeFlag;
+      const eql = std.mem.eql;
+      const val = tok.value;
+
+      var valid_type_flag = false;
+      end_loc = tok.end_location;
+
+      self.nextToken();
+
+      const map = .{
+        .{ "ct", TypeFlag.ct },
+        .{ "i1", TypeFlag.i1 },
+        .{ "i2", TypeFlag.i2 },
+        .{ "i4", TypeFlag.i4 },
+        .{ "i8", TypeFlag.i8 },
+        .{ "u1", TypeFlag.u1 },
+        .{ "u2", TypeFlag.u2 },
+        .{ "u4", TypeFlag.u4 },
+        .{ "u8", TypeFlag.u8 },
+        .{ "iptr", TypeFlag.iptr },
+        .{ "uptr", TypeFlag.uptr },
+      };
+
+      inline for( map ) |entry| {
+        if( eql(u8, val, entry.@"0") ) {
+          type_flag = entry.@"1";
+          valid_type_flag = true;
+          break;
+        }
+      }
+
+      if( !valid_type_flag ) {
+        try self.diagnostics.pushError(
+          "'{s}' isn't a valid integer type flag.",
+          .{ tok.value },
+          tok.start_location,
+          tok.end_location
+        );
+
+        return Error.invalid_integer_type_flag;
+      }
+    }
+  }
 
   return ast.IntegerNode {
     .value = std.fmt.parseInt(i64, token.value, 10) catch unreachable,
+    .type_flag = type_flag,
     .start_location = token.start_location,
-    .end_location = token.end_location
+    .end_location = end_loc
   };
 }
 
@@ -698,4 +748,5 @@ pub const Error = error {
   unexpected_token,
   unexpected_end_of_file,
   unexpected_segmented_identifier,
+  invalid_integer_type_flag,
 } || Diagnostics.Error || Lexer.Error;

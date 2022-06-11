@@ -19,6 +19,7 @@ const Allocator = std.mem.Allocator;
 /// Union representing any node that is considered an expression node.
 ///
 pub const ExpressionNode = union(enum) {
+  // TODO add group expression for (...)
   identifier: IdentifierNode,
   integer: IntegerNode,
   string: StringNode,
@@ -101,7 +102,7 @@ pub const ExpressionNode = union(enum) {
     self: ExpressionNode
   ) ?Type {
     return switch( self ) {
-      .integer => Type.CtInt,
+      .integer => |int| int.getType(),
       .string => null,
       .identifier => |id| id.getType(),
       .binary => |bin| bin.getType(),
@@ -111,4 +112,3 @@ pub const ExpressionNode = union(enum) {
   }
 
 };
-

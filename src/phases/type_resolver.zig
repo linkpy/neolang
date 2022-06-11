@@ -1,3 +1,7 @@
+/// Structure resolving type information in the AST.
+///
+
+// TODO remove order dependence
 
 const std = @import("std");
 
@@ -34,6 +38,8 @@ pub fn init(
 
 
 
+/// Resolves the type of a constant declaration node.
+///
 pub fn resolveConstant(
   self: *TypeResolver,
   cst: *ast.ConstantNode
@@ -52,6 +58,8 @@ pub fn resolveConstant(
   }
 }
 
+/// Resolves the types of an expression node.
+///
 pub fn resolveExpression(
   self: *TypeResolver,
   expr: *ast.ExpressionNode
@@ -65,6 +73,8 @@ pub fn resolveExpression(
   }
 }
 
+/// Resolves the type of the given identifier.
+///
 pub fn resolveIdentifier(
   self: *TypeResolver,
   id_expr: *ast.IdentifierNode
@@ -90,20 +100,35 @@ pub fn resolveIdentifier(
   }
 }
 
+/// Resolves the type of an unary expression.
+///
 pub fn resolveUnaryExpression(
   self: *TypeResolver,
   una: *ast.UnaryExpressionNode
 ) Error!void {
   try self.resolveExpression(una.child);
 
+  // if the resolver managed to resolve the child expression's type
   if( una.child.getType() ) |typ| {
-    const child_constantness = una.child.getConstantness();
+    // if the child expression type supports this unary operation
+    if( typ.getUnaryOperationResultType(una.operator) ) |typ| {
+      una.constantness = una.child.getConstantness();
+      una.type = typ;
 
-    una.constantness = child_constantness;
-    una.type = typ.getUnaryOperationResultType(una.operator);
+    } else {
+
+      try self.diagnostics.pushError(
+        "'{}' doesn't support the '{s}'' unary operation.",
+        .{ typ, @tagName(una.operator) },
+        una.getStartLocation(),
+        una.getEndLocation()
+      );
+    }
   }
 }
 
+/// Resolves the type of a binary expression.
+///
 pub fn resolveBinaryExpression(
   self: *TypeResolver,
   bin: *ast.BinaryExpressionNode
@@ -111,8 +136,12 @@ pub fn resolveBinaryExpression(
   try self.resolveExpression(bin.left);
   try self.resolveExpression(bin.right);
 
+  // if the resolver managed to resolve the left expression's type
   if( bin.left.getType() ) |left_type| {
+    // if the resolver managed to resolve the right expression's type
     if( bin.right.getType() ) |right_type| {
+
+      // if the binary operation between both types is valid
       if( left_type.getBinaryOperationResultType(bin.operator, right_type) ) |typ| {
         bin.constantness = bin.left.getConstantness().mix(bin.right.getConstantness());
         bin.type = typ;
@@ -120,7 +149,7 @@ pub fn resolveBinaryExpression(
       } else {
 
         try self.diagnostics.pushError(
-          "Types '{}' and '{}' cannot be coerced into a type fitting both.", 
+          "Types '{}' and '{}' cannot be coerced together.", 
           .{ left_type, right_type },
           bin.getStartLocation(),
           bin.getEndLocation()

@@ -1,7 +1,7 @@
 /// Structure used to resolves identifiers in the AST.
 ///
 
-
+// TODO remove order dependence
 
 const std = @import("std");
 
