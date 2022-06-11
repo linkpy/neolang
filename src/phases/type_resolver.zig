@@ -111,9 +111,9 @@ pub fn resolveUnaryExpression(
   // if the resolver managed to resolve the child expression's type
   if( una.child.getType() ) |typ| {
     // if the child expression type supports this unary operation
-    if( typ.getUnaryOperationResultType(una.operator) ) |typ| {
+    if( typ.getUnaryOperationResultType(una.operator) ) |res_typ| {
       una.constantness = una.child.getConstantness();
-      una.type = typ;
+      una.type = res_typ;
 
     } else {
 
