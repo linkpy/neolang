@@ -4,21 +4,34 @@ const Type = nl.types.Type;
 
 
 
+/// Union representing a compile-time value.
+///
 pub const Variant = union(enum) {
+  /// No value.
   none: void,
 
+  // TODO: find a better way of handling integer types
+
+  /// Compile-time integer.
   ct_int: i64, // TODO use bigint
 
+  /// Signed integers.
   i1: i8, i2: i16, i4: i32, i8: i64,
+  /// Unsigned integers.
   u1: u8, u2: u16, u4: u32, u8: u64,
+  /// Pointer-sized integers.
   iptr: isize, uptr: usize, // TODO use bigint
 
+  /// Boolean
   bool: bool,
 
+  /// Type.
   type: Type,
 
 
 
+  /// Gets the type of the variant;
+  ///
   pub fn getType(
     self: Variant
   ) ?Type {

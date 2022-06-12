@@ -1,3 +1,7 @@
+/// Structure storing the files used by the compiler.
+///
+
+
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
@@ -8,12 +12,15 @@ const FileStorage = @This();
 
 
 
+/// Allocator used.
 alloc: Allocator,
-
+/// List of files.
 files: FileList,
 
 
 
+/// Initialises a new instance.
+///
 pub fn init(
   alloc: Allocator
 ) FileStorage {
@@ -23,6 +30,8 @@ pub fn init(
   };
 }
 
+/// Deinitialises the storage.
+///
 pub fn deinit(
   self: *FileStorage
 ) void {
@@ -35,6 +44,8 @@ pub fn deinit(
 
 
 
+/// Gets the file ID associated to the given path.
+///
 pub fn getFileID(
   self: FileStorage,
   path: []const u8
@@ -52,6 +63,10 @@ pub fn getFileID(
 
 
 
+/// Adds a in-memory file. 
+///
+/// Mostly used for debugging and isn't well integrated with the other files.
+///
 pub fn addMemoryFile(
   self: *FileStorage,
   name: []const u8,
@@ -68,6 +83,10 @@ pub fn addMemoryFile(
   return self.files.items.len - 1;
 }
 
+/// Adds a file from the disk.
+///
+/// The file is initially unloaded.
+///
 pub fn addDiskFile(
   self: *FileStorage,
   path: []const u8
@@ -87,6 +106,8 @@ pub fn addDiskFile(
 
 
 
+/// Gets the path associated with the given file ID.
+///
 pub fn getPath(
   self: FileStorage,
   file_id: FileID
@@ -97,6 +118,10 @@ pub fn getPath(
   return self.files.items[file_id].getPath();
 }
 
+/// Gets the source associated with the given file ID.
+///
+/// If the file is unloaded and `load` is true, the file will be loaded from 
+/// disk.
 pub fn getSource(
   self: *FileStorage,
   file_id: FileID,
@@ -132,6 +157,8 @@ pub fn getSource(
   }
 }
 
+/// Gets the source of the given file, splited by lines.
+///
 pub fn getLines(
   self: *FileStorage,
   file_id: FileID,
@@ -152,11 +179,22 @@ pub fn getLines(
 
 
 
+/// Unique identifier of a file.
 pub const FileID = usize;
 
 
 
-pub const File = union(enum) {
+pub const Error = error {
+  file_already_loaded,
+  invalid_file_id,
+  file_not_loaded,
+} || Allocator.Error;
+
+
+
+/// Represents a file in the storage.
+///
+const File = union(enum) {
   memory: Memory,
   disk: Disk,
   unloaded: Unloaded,
@@ -188,11 +226,15 @@ pub const File = union(enum) {
 
 
 
+  /// In-memory file.
+  ///
   pub const Memory = struct {
     name: []const u8,
     source: []const u8,
   };
 
+  /// File loaded from disk.
+  ///
   pub const Disk = struct {
     path: []const u8,
     source: []const u8,
@@ -206,6 +248,8 @@ pub const File = union(enum) {
     }
   };
 
+  /// File on disk, but not loaded.
+  ///
   pub const Unloaded = struct {
     path: []const u8,
 
@@ -216,10 +260,5 @@ pub const File = union(enum) {
       alloc.free(self.path);
     }
   };
+  
 };
-
-pub const Error = error {
-  file_already_loaded,
-  invalid_file_id,
-  file_not_loaded,
-} || Allocator.Error;

@@ -70,6 +70,8 @@ pub fn isSameAs(
 
 
 
+/// Checks if the current integer type can be coerced into the given type.
+///
 pub fn canBeCoercedToType(
   self: IntegerType,
   to: Type,
@@ -80,10 +82,14 @@ pub fn canBeCoercedToType(
   };
 }
 
+/// Checks if the current integer type can be coerced into the given integer 
+/// type.
+///
 pub fn canBeCoercedToInt(
   self: IntegerType,
   to: IntegerType
 ) bool {
+  // ct_int can coerce to anything and vice versa
   if( self.width == .dynamic or to.width == .dynamic ) {
     return true;
 
@@ -104,6 +110,9 @@ pub fn canBeCoercedToInt(
 
 
 
+/// Finds the type that the current integer type and the given type can coerce 
+/// into.
+///
 pub fn peerResolutionType(
   self: IntegerType,
   other: Type
@@ -114,6 +123,8 @@ pub fn peerResolutionType(
   };
 }
 
+/// Finds the type that both integer type can coerce into.
+///
 pub fn peerResolutionInt(
   self: IntegerType,
   other: IntegerType
@@ -170,49 +181,15 @@ pub fn getBinaryOperationInteger(
   op: BinOp,
   other: IntegerType
 ) ?Type {
+  return switch( op ) {
+    .eq, .ne, .lt, .le, .gt, .ge => 
+      if( self.peerResolutionInt(other) == null ) 
+        null
+      else
+        Type.Bool,
 
-  switch( op ) {
-
-    .eq, .ne, .lt, .le, .gt, .ge => {
-      if( self.width != .dynamic and other.width != .dynamic and self.signed != other.signed )
-        return null;
-
-      return Type.Bool;
-    }, 
-
-    else => {
-      if( self.width == .dynamic and other.width == .dynamic ) {
-        return Type.CtInt;
-
-      } else if( self.width == .dynamic and other.width != .dynamic ) {
-        return other.toType();
-
-      } else if( self.width != .dynamic and other.width == .dynamic ) {
-        return self.toType();
-
-      } else {
-        if( self.signed != other.signed )
-          return null;
-        
-        switch( self.width ) {
-          .bytes => |self_width| switch( other.width ) {
-            .bytes => |other_width| if( self_width > other_width )
-              return self.toType()
-            else 
-              return other.toType(),
-            else => return null,
-          },
-          .pointer => switch( other.width ) {
-            .pointer => return self.toType(),
-            else => return null,
-          },
-          else => unreachable,
-        }
-      }
-
-    }
-
-  }
+    else => self.peerResolutionInt(other),
+  };
 }
 
 /// Gets the resulting type of the unary operation on the integer type.
@@ -250,13 +227,20 @@ pub fn format(
 
 
 
+/// Width an integer type.
+///
 pub const Width = union(enum) {
+  /// Dynamic width. Used for ct_int.
   dynamic: void,
+  /// Fixed sized, in bytes.
   bytes: u8,
+  /// Width equivalent to a pointer.
   pointer: void,
 
 
 
+  /// Checks if both width are the same.
+  ///
   pub fn eq(
     a: Width,
     b: Width
@@ -270,4 +254,5 @@ pub const Width = union(enum) {
       .pointer => b == .pointer,
     };
   }
+
 };

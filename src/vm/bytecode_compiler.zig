@@ -1,3 +1,7 @@
+/// Structure used to compile compile-time expressions into bytecode.
+///
+
+
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
@@ -15,13 +19,18 @@ const BytecodeCompiler = @This();
 
 
 
+/// Diagnostics used in case of error.
 diagnostics: *Diagnostics,
+/// Identifier storage.
 identifiers: *IdentifierStorage,
 
+/// Bytecode writer used to write the code;
 writer: BytecodeWriter,
 
 
 
+/// Initialises a new instance.
+///
 pub fn init(
   diags: *Diagnostics,
   ids: *IdentifierStorage,
@@ -35,6 +44,8 @@ pub fn init(
   };
 }
 
+/// Deinitialises the compiler.
+///
 pub fn deinit(
   self: *BytecodeCompiler
 ) void {
@@ -43,6 +54,8 @@ pub fn deinit(
 
 
 
+/// Commits the writen bytecode into an executable state.
+///
 pub fn commit(
   self: *BytecodeCompiler
 ) Error!bc.State {
@@ -51,72 +64,39 @@ pub fn commit(
 
 
 
+/// Compiles an expression node, adding a potential type case if a type hint is
+/// given.
+///
 pub fn compileExpression(
   self: *BytecodeCompiler,
   expr: *const ast.ExpressionNode,
   type_hint: ?Type,
 ) Error!Type {
+  // stack : (-- x)
+
   return switch( expr.* ) {
     .identifier => |id| try self.compileIdentifier(&id, type_hint),
     .integer => |int| try self.compileInteger(&int, type_hint),
     .string => @panic("NYI"),
     .binary => |bin| try self.compileBinaryExpr(&bin, type_hint),
-    .unary => @panic("NYI"),
-    .call => @panic("NYI"),
+    .unary => @panic("NYI"), // TODO support unary expr
+    .call => @panic("NYI"), // TODO support call expr
     .group => |grp| try self.compileExpression(grp.child, type_hint)
   };
 }
 
+/// Compiles an identifier, adding a potential type case if a type hint is
+/// given.
+///
 pub fn compileIdentifier(
   self: *BytecodeCompiler,
   id_expr: *const ast.IdentifierNode,
   type_hint: ?Type,
 ) Error!Type {
-  if( id_expr.identifier_id ) |id| {
+  // stack : (-- x)
 
-    if( id_expr.constantness != .constant ) {
-      try self.diagnostics.pushError(
-        "Trying to compile non-constant code.", .{},
-        id_expr.getStartLocation(),
-        id_expr.getEndLocation(),
-      );
-
-      return Error.non_constant_code;
-    }
-
-    if( id_expr.type == null ) {
-      try self.diagnostics.pushError(
-        "[BUG] Identifier was resolved but has no type.", .{},
-        id_expr.getStartLocation(),
-        id_expr.getEndLocation(),
-      );
-
-      return Error.incomplete_code;
-    }
-
-    const id_type = id_expr.type.?;
-
-    try self.writer.writeLoadId(id);
-
-    if( type_hint ) |typ| {
-      if( !id_type.canBeCoercedTo(typ) ) {
-        try self.diagnostics.pushError(
-          "A value of type '{}' cannot be coerced to '{}'.",
-          .{ id_type, typ },
-          id_expr.getStartLocation(),
-          id_expr.getStartLocation(),
-        );
-
-        return Error.type_resolution_failed;
-      }
-
-      try self.compileTypeCoercion(id_type, typ);
-      return typ;
-    }
-
-    return id_type;
-
-  } else {
+  // the ID was resolved
+  if( id_expr.identifier_id == null ) {
     try self.diagnostics.pushError(
       "[BUG] Trying to compile an unresolved identifier.", .{},
       id_expr.getStartLocation(), id_expr.getEndLocation()
@@ -124,8 +104,50 @@ pub fn compileIdentifier(
 
     return Error.incomplete_code;
   }
+
+  const id = id_expr.identifier_id.?;
+
+  // the ID is constant
+  if( id_expr.constantness != .constant ) {
+    try self.diagnostics.pushError(
+      "[BUG] Trying to compile non-constant code.", .{},
+      id_expr.getStartLocation(),
+      id_expr.getEndLocation(),
+    );
+
+    return Error.non_constant_code;
+  }
+
+  // the ID has a type
+  if( id_expr.type == null ) {
+    try self.diagnostics.pushError(
+      "[BUG] Identifier was resolved but has no type.", .{},
+      id_expr.getStartLocation(),
+      id_expr.getEndLocation(),
+    );
+
+    return Error.incomplete_code;
+  }
+
+  const id_type = id_expr.type.?;
+
+  try self.writer.writeLoadId(id);
+
+  if( type_hint ) |typ| {
+    try self.emitTypeCoercion(
+      id_type, typ, 
+      id_expr.getStartLocation(), id_expr.getEndLocation()
+    );
+
+    return typ;
+  }
+
+  return id_type;
+
 }
 
+/// Compiles an integer, adding a potential type cast if a type hint is given.
+///
 pub fn compileInteger(
   self: *BytecodeCompiler,
   int: *const ast.IntegerNode,
@@ -150,50 +172,92 @@ pub fn compileInteger(
   const vtype = variant.getType().?;
 
   if( type_hint ) |typ| {
-    if( !vtype.canBeCoercedTo(typ) ) {
-      try self.diagnostics.pushError(
-        "A value of type '{}' cannot be coerced to '{}'.",
-        .{ vtype, typ },
-        int.getStartLocation(),
-        int.getStartLocation(),
-      );
+    try self.emitTypeCoercion(
+      vtype, typ,
+      int.getStartLocation(), int.getEndLocation()
+    );
 
-      return Error.type_resolution_failed;
-    }
-
-    try self.compileTypeCoercion(vtype, typ);
     return typ;
   }
 
   return vtype;
 }
 
+/// Compiles a binary expression, adding a potential type cast if a type hint is 
+/// given.
+///
 pub fn compileBinaryExpr(
   self: *BytecodeCompiler,
   bin: *const ast.BinaryExpressionNode,
   type_hint: ?Type,
 ) Error!Type {
+  // the expression is contant
+  if( bin.constantness != .constant ) {
+    try self.diagnostics.pushError(
+      "[BUG] Trying to compile a non-constant expression.", .{},
+      bin.getStartLocation(), bin.getEndLocation(),
+    );
+
+    return Error.non_constant_code;
+  }
+
+  // the expression is typed
+  if( bin.type == null ) {
+    try self.diagnostics.pushError(
+      "[BUG] Trying to compile an untyped expression.", .{},
+      bin.getStartLocation(), bin.getEndLocation(),
+    );
+
+    return Error.incomplete_code;
+  }
+
+  const typ = bin.type.?;
+
+  // compiles the left hand side
   const left_type = try self.compileExpression(bin.left, null);
+
+  if( !left_type.isSameAs(typ) ) {
+    try self.emitTypeCoercion(
+      left_type, typ,
+      bin.left.getStartLocation(), bin.left.getEndLocation()
+    );
+  }
+
+  // compiles the right hand side
   const right_type = try self.compileExpression(bin.right, null);
+
+  if( !right_type.isSameAs(typ) ) {
+    try self.emitTypeCoercion(
+      right_type, typ,
+      bin.right.getStartLocation(), bin.right.getEndLocation()
+    );
+  }
+
+
+  // gets the result type
   const res_type = left_type.peerResolution(right_type) orelse {
     try self.diagnostics.pushError(
-      "[BUG] Unable to do peer resolution on a fully resolved binary expression.", .{},
+      "[BUG] Unable to do peer type resolution on a fully resolved binary expression.", .{},
       bin.getStartLocation(), bin.getEndLocation(),
     );
 
     return Error.incomplete_code;
   };
 
-  if( !right_type.isSameAs(res_type) ) {
-    try self.compileTypeCoercion(right_type, res_type);
+
+  // we make sure it's the right type
+  if( !typ.isSameAs(res_type) ) {
+    try self.diagnostics.pushError(
+      "[BUG] Inconsistent typing. The AST says the expression is of type '{}', but peer type resolution says '{}'.",
+      .{ typ, res_type },
+      bin.getStartLocation(), bin.getEndLocation()
+    );
+
+    return Error.incomplete_code;
   }
 
-  if( !left_type.isSameAs(res_type) ) {
-    try self.writer.writeSwap();
-    try self.compileTypeCoercion(left_type, res_type);
-    try self.writer.writeSwap();
-  }
 
+  // we write the operation
   switch( bin.operator ) {
     .add => try self.writer.writeAddInt(res_type.integer),
     .sub => try self.writer.writeSubInt(res_type.integer),
@@ -215,19 +279,13 @@ pub fn compileBinaryExpr(
     .bxor => try self.writer.writeBxorInt(res_type.integer),
   }
 
-  if( type_hint ) |typ| {
-    if( !res_type.canBeCoercedTo(typ) ) {
-      try self.diagnostics.pushError(
-        "A value of type '{}' cannot be coerced to '{}'.",
-        .{ res_type, typ },
-        bin.getStartLocation(),
-        bin.getStartLocation(),
-      );
+  // optional cast for the type hint
+  if( type_hint ) |ty| {
+    try self.emitTypeCoercion(
+      res_type, ty,
+      bin.getStartLocation(), bin.getEndLocation()
+    );
 
-      return Error.type_resolution_failed;
-    }
-
-    try self.compileTypeCoercion(res_type, typ);
     return typ;
   }
 
@@ -236,11 +294,27 @@ pub fn compileBinaryExpr(
 
 
 
-fn compileTypeCoercion(
+/// Emits instructions to ensure the last element in the stack is of the wanted
+/// type.
+///
+fn emitTypeCoercion(
   self: *BytecodeCompiler,
   from: Type,
-  to: Type
+  to: Type,
+  start_loc: nl.diagnostic.Location,
+  end_loc: nl.diagnostic.Location,
 ) Error!void {
+  if( !from.canBeCoercedTo(to) ) {
+    try self.diagnostics.pushError(
+      "A value of type '{}' cannot be coerced to '{}'.",
+      .{ from, to },
+      start_loc,
+      end_loc,
+    );
+
+    return Error.type_resolution_failed;
+  }
+
   switch( from ) {
     .integer => |from_i| switch( to ) {
       .integer => |to_i| try self.writer.writeCastInt(from_i, to_i),
@@ -249,6 +323,7 @@ fn compileTypeCoercion(
     else => unreachable,
   }
 }
+
 
 
 pub const Error = error {

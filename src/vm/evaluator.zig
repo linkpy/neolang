@@ -1,3 +1,7 @@
+/// Structure used to evaluate compile-time code.
+///
+
+
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
@@ -15,12 +19,17 @@ const Evaluator = @This();
 
 
 
+/// Allocator used.
 alloc: Allocator,
+/// Diagnostics used in case of error.
 diagnostics: *Diagnostics,
+/// Identifier storage.
 identifiers: *IdentifierStorage,
 
 
 
+/// Initialises a new instance.
+///
 pub fn init(
   alloc: Allocator,
   diags: *Diagnostics,
@@ -35,6 +44,8 @@ pub fn init(
 
 
 
+/// Evaluates the given expression.
+///
 pub fn evaluateExpression(
   self: *Evaluator,
   expr: *const ast.ExpressionNode,

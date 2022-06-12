@@ -1,3 +1,7 @@
+/// Structure used to write bytecode instructions.
+///
+
+
 
 const std = @import("std");
 
@@ -11,16 +15,24 @@ const BytecodeWriter = @This();
 
 
 
+/// Allocator used;
 alloc: std.mem.Allocator,
 
+/// Identifier storage.
 identifiers: *IdentifierStorage,
+/// Number of parameters.
 params: usize,
+/// Number of locals.
 locals: usize,
+/// Stack size.
 stack: usize,
+/// Code buffer.
 code: std.ArrayList(bc.Instruction),
 
 
 
+/// Initialises a new instance.
+/// 
 pub fn init(
   alloc: std.mem.Allocator,
   ids: *IdentifierStorage,
@@ -36,6 +48,8 @@ pub fn init(
   };
 }
 
+/// Deinitialises the writer.
+///
 pub fn deinit(
   self: *BytecodeWriter
 ) void {
@@ -44,6 +58,8 @@ pub fn deinit(
 
 
 
+/// Commits the writed instructions into a runnable state.
+///
 pub fn commit(
   self: *BytecodeWriter
 ) Error!bc.State {
@@ -69,12 +85,21 @@ pub fn commit(
 
 
 
+/// Writes a NOOP instruction.
+///
+/// Stack pattern: (--)
+///
 pub fn writeNoop(
   self: *BytecodeWriter
 ) Error!void {
   try self.writeDatalessOp(.noop);
 }
 
+/// Writes a LOAD_ID instruction, pushing on stack the value of an identifier 
+/// from the identifier storage.
+///
+/// Stack pattern: (-- x)
+///
 pub fn writeLoadId(
   self: *BytecodeWriter,
   id: usize,
@@ -82,6 +107,11 @@ pub fn writeLoadId(
   try self.writeIdOp(.load_id, id);
 }
 
+/// Writes a LOAD_PARAM instruction, pushing on the stack the value of a 
+/// parameter (stored in the runnable state).
+///
+/// Stack pattern: (-- x)
+///
 pub fn writeLoadParam(
   self: *BytecodeWriter,
   id: usize
@@ -92,6 +122,11 @@ pub fn writeLoadParam(
   try self.writeIdOp(.load_params, id);
 }
 
+/// Writes a LOAD_LOCAL instruction, pushing on the stack the value of a local
+/// stored in the runnable state.
+///
+/// Stack pattern: (-- x)
+///
 pub fn writeLoadLocal(
   self: *BytecodeWriter,
   id: usize
@@ -101,6 +136,10 @@ pub fn writeLoadLocal(
   try self.writeIdOp(.load_local, id);
 }
 
+/// Writes a LOAD_DATA instruction, pushing on the stack the given variant.
+///
+/// Stack pattern: (-- x)
+///
 pub fn writeLoadData(
   self: *BytecodeWriter,
   v: Variant
@@ -111,6 +150,11 @@ pub fn writeLoadData(
   });
 }
 
+/// Writes a WRITE_LOCAL instruction, poping the top variant from the stack to 
+/// store it in the given local stored in the runnable state.
+///
+/// Stack pattern: (a --)
+///
 pub fn writeWriteLocal(
   self: *BytecodeWriter,
   id: usize
@@ -120,24 +164,42 @@ pub fn writeWriteLocal(
   try self.writeIdOp(.write_local, id);
 }
 
+/// Writes a END instruction, terminating the execution of the state.
+///
+/// Stack pattern: (--)
+///
 pub fn writeEnd(
   self: *BytecodeWriter,
 ) Error!void {
   try self.writeDatalessOp(.end);
 }
 
+/// Writes a RET instruction, terminating the execution of the state and 
+/// retuning the top value of the stack.
+///
+/// Stack pattern: (a --)
+///
 pub fn writeRet(
   self: *BytecodeWriter
 ) Error!void {
   try self.writeDatalessOp(.ret);
 }
 
+/// Writes a ERR instruction, terminating the execution of the state and 
+/// returning an error.
+///
+/// Stack pattern: (--)
+///
 pub fn writeErr(
   self: *BytecodeWriter
 ) Error!void {
   try self.writeDatalessOp(.err);
 }
 
+/// Writes a DROP instruction, dropping N variants from the top of the stack.
+///
+/// Stack pattern: (a...N --)
+///
 pub fn writeDrop(
   self: *BytecodeWriter,
   n: u16
@@ -148,6 +210,11 @@ pub fn writeDrop(
   });
 }
 
+/// Writes a DUP instruction, duplicating the top variant from the stack N 
+/// times.
+///
+/// Stack pattern: (a -- a a...N)
+///
 pub fn writeDup(
   self: *BytecodeWriter,
   n: u16
@@ -158,12 +225,21 @@ pub fn writeDup(
   });
 }
 
+/// Writes a SWAP instruction, swapping the two top variants from the stack.
+///
+/// Stack pattern: (a b -- b a)
+///
 pub fn writeSwap(
   self: *BytecodeWriter
 ) Error!void {
   try self.writeDatalessOp(.swap);
 }
 
+/// Writes a CAST_INT instruction, converting the top variant from the stack 
+/// into the given integer type.
+///
+/// Stack pattern: (a -- a)
+///
 pub fn writeCastInt(
   self: *BytecodeWriter,
   from: Type.Integer,
@@ -179,6 +255,11 @@ pub fn writeCastInt(
   });
 }
 
+/// Writes a ADD_INT instruction, adding the two top-most integers from the 
+/// stack.
+/// 
+/// Stack pattern: (a b -- x) with x = a + b
+///
 pub fn writeAddInt(
   self: *BytecodeWriter,
   typ: Type.Integer
@@ -186,6 +267,11 @@ pub fn writeAddInt(
   try self.writeIntBinOp(typ, .add_int);
 }
 
+/// Writes a SUB_INT instruction, substracting the two top-most integers from the 
+/// stack.
+/// 
+/// Stack pattern: (a b -- x) with x = a - b
+///
 pub fn writeSubInt(
   self: *BytecodeWriter,
   typ: Type.Integer
@@ -193,6 +279,11 @@ pub fn writeSubInt(
   try self.writeIntBinOp(typ, .sub_int);
 }
 
+/// Writes a MUL_INT instruction, multiplying the two top-most integers from the 
+/// stack.
+/// 
+/// Stack pattern: (a b -- x) with x = a * b
+///
 pub fn writeMulInt(
   self: *BytecodeWriter,
   typ: Type.Integer
@@ -200,6 +291,11 @@ pub fn writeMulInt(
   try self.writeIntBinOp(typ, .mul_int);
 }
 
+/// Writes a DIV_INT instruction, dividing the two top-most integers from the 
+/// stack.
+/// 
+/// Stack pattern: (a b -- x) with x = @divFloor(a, b)
+///
 pub fn writeDivInt(
   self: *BytecodeWriter,
   typ: Type.Integer
@@ -207,6 +303,11 @@ pub fn writeDivInt(
   try self.writeIntBinOp(typ, .div_int);
 }
 
+/// Writes a MOD_INT instruction, modulo'ing the two top-most integers from the 
+/// stack.
+/// 
+/// Stack pattern: (a b -- x) with x = @mod(a, b)
+///
 pub fn writeModInt(
   self: *BytecodeWriter,
   typ: Type.Integer
@@ -214,6 +315,11 @@ pub fn writeModInt(
   try self.writeIntBinOp(typ, .mod_int);
 }
 
+/// Writes a EQ_INT instruction, pushing true to the stack if both integers 
+/// are the same.
+/// 
+/// Stack pattern: (a b -- x) with x = a == b
+///
 pub fn writeEqInt(
   self: *BytecodeWriter,
   typ: Type.Integer
@@ -221,6 +327,11 @@ pub fn writeEqInt(
   try self.writeIntBinOp(typ, .eq_int);
 }
 
+/// Writes a NE_INT instruction, pushing true to the stack if both integers 
+/// are different.
+/// 
+/// Stack pattern: (a b -- x) with x = a != b
+///
 pub fn writeNeInt(
   self: *BytecodeWriter,
   typ: Type.Integer
@@ -228,6 +339,11 @@ pub fn writeNeInt(
   try self.writeIntBinOp(typ, .ne_int);
 }
 
+/// Writes a LT_INT instruction, pushing true to the stack if the 2nd integer
+/// is less than the first.
+/// 
+/// Stack pattern: (a b -- x) with x = a < b
+///
 pub fn writeLtInt(
   self: *BytecodeWriter,
   typ: Type.Integer
@@ -235,6 +351,11 @@ pub fn writeLtInt(
   try self.writeIntBinOp(typ, .lt_int);
 }
 
+/// Writes a LE_INT instruction, pushing true to the stack if the 2nd integer
+/// is less than or equal to the first.
+/// 
+/// Stack pattern: (a b -- x) with x = a <= b
+///
 pub fn writeLeInt(
   self: *BytecodeWriter,
   typ: Type.Integer
@@ -242,6 +363,11 @@ pub fn writeLeInt(
   try self.writeIntBinOp(typ, .le_int);
 }
 
+/// Writes a GT_INT instruction, pushing true to the stack if the 2nd integer
+/// is greater than the first.
+/// 
+/// Stack pattern: (a b -- x) with x = a > b
+///
 pub fn writeGtInt(
   self: *BytecodeWriter,
   typ: Type.Integer
@@ -249,6 +375,11 @@ pub fn writeGtInt(
   try self.writeIntBinOp(typ, .gt_int);
 }
 
+/// Writes a GE_INT instruction, pushing true to the stack if the 2nd integer
+/// is greater than or equal to the first.
+/// 
+/// Stack pattern: (a b -- x) with x = a >= b
+///
 pub fn writeGeInt(
   self: *BytecodeWriter,
   typ: Type.Integer
@@ -256,6 +387,10 @@ pub fn writeGeInt(
   try self.writeIntBinOp(typ, .ge_int);
 }
 
+/// Writes a SHL_INT instruction.
+/// 
+/// Stack pattern: (a b -- x) with x = a << b
+///
 pub fn writeShlInt(
   self: *BytecodeWriter,
   typ: Type.Integer
@@ -263,6 +398,10 @@ pub fn writeShlInt(
   try self.writeIntBinOp(typ, .shl_int);
 }
 
+/// Writes a SHR_INT instruction.
+/// 
+/// Stack pattern: (a b -- x) with x = a >> b
+///
 pub fn writeShrInt(
   self: *BytecodeWriter,
   typ: Type.Integer
@@ -270,6 +409,10 @@ pub fn writeShrInt(
   try self.writeIntBinOp(typ, .shr_int);
 }
 
+/// Writes a BAND_INT instruction.
+/// 
+/// Stack pattern: (a b -- x) with x = a & b
+///
 pub fn writeBandInt(
   self: *BytecodeWriter,
   typ: Type.Integer
@@ -277,6 +420,10 @@ pub fn writeBandInt(
   try self.writeIntBinOp(typ, .band_int);
 }
 
+/// Writes a BOR_INT instruction.
+/// 
+/// Stack pattern: (a b -- x) with x = a | b
+///
 pub fn writeBorInt(
   self: *BytecodeWriter,
   typ: Type.Integer
@@ -284,6 +431,10 @@ pub fn writeBorInt(
   try self.writeIntBinOp(typ, .bor_int);
 }
 
+/// Writes a BXOR_INT instruction.
+/// 
+/// Stack pattern: (a b -- x) with x = a ^ b
+///
 pub fn writeBxorInt(
   self: *BytecodeWriter,
   typ: Type.Integer
@@ -291,6 +442,10 @@ pub fn writeBxorInt(
   try self.writeIntBinOp(typ, .bxor_int);
 }
 
+/// Writes a LAND instruction.
+/// 
+/// Stack pattern: (a b -- x) with x = a and b
+///
 pub fn writeLand(
   self: *BytecodeWriter
 ) Error!void {
@@ -300,6 +455,10 @@ pub fn writeLand(
   });
 }
 
+/// Writes a LOR instruction.
+/// 
+/// Stack pattern: (a b -- x) with x = a or b
+///
 pub fn writeLor(
   self: *BytecodeWriter
 ) Error!void {
@@ -311,6 +470,8 @@ pub fn writeLor(
 
 
 
+/// Writes an instruction taking an ID as data.
+///
 fn writeIdOp(
   self: *BytecodeWriter,
   op: bc.Opcode,
@@ -322,6 +483,8 @@ fn writeIdOp(
   });
 }
 
+/// Writes an instruction that takes no data.
+///
 fn writeDatalessOp(
   self: *BytecodeWriter,
   op: bc.Opcode
@@ -332,6 +495,8 @@ fn writeDatalessOp(
   });
 }
 
+/// Writes an integer binary operation.
+///
 fn writeIntBinOp(
   self: *BytecodeWriter,
   typ: Type.Integer,
@@ -345,6 +510,9 @@ fn writeIntBinOp(
 }
 
 
+
+/// Converts an integer type to the VM's integer type index.
+///
 fn indexOfIntType(
   t: Type.Integer
 ) ?u4 {

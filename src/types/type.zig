@@ -51,10 +51,10 @@ pub const Type = union(enum) {
   /// Integer type variant.
   integer: IntegerType,
   /// Boolean type variant.
-  boolean: void, // TODO add a Bool struct
+  boolean: void, // TODO add a BoolType struct
 
   /// Type type variant.
-  type: void,
+  type: void, // TODO add a TypeType structure
 
 
 
@@ -84,17 +84,21 @@ pub const Type = union(enum) {
 
 
 
+  /// Checks if the current type can be coerced into the given type.
+  ///
   pub fn canBeCoercedTo(
     self: Type,
-    other: Type
+    to: Type
   ) bool {
     return switch( self ) {
-      .integer => |int| int.canBeCoercedToType(other),
-      .boolean => other == .boolean,
-      .type => other == .type,
+      .integer => |int| int.canBeCoercedToType(to),
+      .boolean => to == .boolean,
+      .type => to == .type,
     };
   }
 
+  /// Finds the type that both type can coerce into.
+  ///
   pub fn peerResolution(
     self: Type,
     other: Type

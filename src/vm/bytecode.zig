@@ -7,16 +7,24 @@ const IdentifierStorage = nl.storage.Identifier;
 
 
 
+/// Structure representing a bytecode instruction.
+///
 pub const Instruction = struct {
+  /// Opcode of the instruction.
   opcode: Opcode,
+  /// Data of the instruction.
   data: Data,
 };
 
+/// Structure representing data for an instruction.
+///
 pub const Data = union(enum) {
   variant: Variant,
   id: usize,
 };
 
+/// Available opcodes.
+///
 pub const Opcode = enum(u32) {
   // -- ()
   noop,
@@ -96,24 +104,37 @@ pub const Opcode = enum(u32) {
   // a:T b:T -- c:T (T: u8)
   bxor_int,
 
+  // TODO add unary int ops
+
   // a:bool b:bool -- c:bool ()
   land,
   // a:bool b:bool -- c:bool ()
   lor,
 };
 
+/// Structure representing a runnable state of a bytecode buffer.
+///
 pub const State = struct {
+  /// Identifier storage.
   identifiers: *IdentifierStorage,
+  /// Parameters of the code.
   params: []const Variant,
+  /// Locals used by the code.
   locals: []Variant,
+  /// Stack used by the code.
   stack: []Variant,
+  /// Bytecode.
   code: []const Instruction,
 
+  /// Stack pointer.
   stack_index: usize,
+  /// Code pointer.
   code_index: usize,
 
 
 
+  /// Deinitialises the state.
+  ///
   pub fn deinit(
     self: *State,
     alloc: std.mem.Allocator,
@@ -126,6 +147,8 @@ pub const State = struct {
 
 
 
+  /// Runs a single instruction from the code.
+  ///
   pub fn step(
     self: *State
   ) StepResult {
@@ -136,6 +159,8 @@ pub const State = struct {
     return handler(self, instruction);
   }
 
+  /// Runs the code until an `END`, `RET`, or `ERR` instructions is executed.
+  ///
   pub fn run(
     self: *State
   ) anyerror!Variant {
@@ -152,6 +177,8 @@ pub const State = struct {
 
 
 
+  /// Pushes a variant to the stack.
+  ///
   fn push(
     self: *State,
     v: Variant
@@ -160,6 +187,8 @@ pub const State = struct {
     self.stack_index += 1;
   }
 
+  /// Pops a variant from the stack.
+  ///
   fn pop(
     self: *State
   ) Variant {
@@ -167,6 +196,8 @@ pub const State = struct {
     return self.stack[self.stack_index];
   }
 
+  /// Peeks the top variant from the stack.
+  ///
   fn peek(
     self: *State
   ) Variant {
@@ -175,9 +206,14 @@ pub const State = struct {
 
 
 
+  /// Result returned by the execution of a single instruction.
+  ///
   pub const StepResult = union(enum) {
+    /// The code hasn't finished executing
     not_finished: void,
+    /// The code has finished executing, returning the given Variant;
     finished: Variant,
+    /// The code has failed.
     failed: anyerror,
   };
 
@@ -198,6 +234,7 @@ pub const IntTypes = struct {
   pub const IPtr: u4 = 9;
   pub const UPtr: u4 = 10;
 };
+
 
 
 const InstructionHandler = fn(*State, Instruction) State.StepResult;
