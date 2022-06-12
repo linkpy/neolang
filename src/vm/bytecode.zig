@@ -1,8 +1,9 @@
 
 const std = @import("std");
 
-const Variant = @import("./variant.zig").Variant;
-const IdentifierStorage = @import("../storage/identifier.zig");
+const nl = @import("../nl.zig");
+const Variant = nl.vm.Variant;
+const IdentifierStorage = nl.storage.Identifier;
 
 
 

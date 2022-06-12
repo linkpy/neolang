@@ -4,10 +4,12 @@
 
 
 const std = @import("std");
-const Diagnostic = @import("./diagnostic.zig");
-const Diagnostics = @import("./diagnostics.zig");
-const FileStorage = @import("../storage/file.zig");
 const Writer = std.fs.File.Writer;
+
+const nl = @import("../nl.zig");
+const Diagnostic = nl.diagnostic.Diagnostic;
+const Diagnostics = nl.diagnostic.Diagnostics;
+const FileStorage = nl.storage.File;
 
 const Renderer = @This();
 

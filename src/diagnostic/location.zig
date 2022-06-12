@@ -4,7 +4,9 @@
 
 
 const std = @import("std");
-const FileID = @import("../storage/file.zig").FileID;
+
+const nl = @import("../nl.zig");
+const FileID = nl.storage.File.FileID;
 
 const Location = @This();
 

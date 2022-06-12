@@ -1,20 +1,20 @@
 const std = @import("std");
+const nl = @import("./nl.zig");
 
-const FileStorage = @import("./storage/file.zig");
-const IdStorage = @import("./storage/identifier.zig");
+const FileStorage = nl.storage.File;
+const IdStorage = nl.storage.Identifier;
 
-const Diagnostic = @import("./diagnostic/diagnostic.zig");
-const Diagnostics = @import("./diagnostic/diagnostics.zig");
-const Renderer = @import("./diagnostic/renderer.zig");
+const Diagnostics = nl.diagnostic.Diagnostics;
+const Renderer = nl.diagnostic.Renderer;
 
-const Lexer = @import("./parser/lexer.zig");
-const Parser = @import("./parser/parser.zig");
-const ast = @import("./parser/ast.zig");
+const ast = nl.parser.ast;
+const Lexer = nl.parser.Lexer;
+const Parser = nl.parser.Parser;
 
-const IdResolver = @import("./phases/identifier_resolver.zig");
-const TypeResolver = @import("./phases/type_resolver.zig");
+const IdResolver = nl.analysis.IdentifierResolver;
+const TypeResolver = nl.analysis.TypeResolver;
 
-const Evaluator = @import("./vm/evaluator.zig");
+const Evaluator = nl.vm.Evaluator;
 
 
 

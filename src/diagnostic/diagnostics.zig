@@ -4,8 +4,10 @@
 
 
 const std = @import("std");
-const Diagnostic = @import("./diagnostic.zig");
-const Location = @import("./location.zig");
+
+const nl = @import("../nl.zig");
+const Diagnostic = nl.diagnostic.Diagnostic;
+const Location = nl.diagnostic.Location;
 
 const Diagnostics = @This();
 

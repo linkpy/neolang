@@ -1,12 +1,10 @@
 
 const std = @import("std");
-
 const Allocator = std.mem.Allocator;
-const FileStorage = @This();
 
 const FileList = std.ArrayList(File);
 
-pub const FileID = usize;
+const FileStorage = @This();
 
 
 
@@ -151,6 +149,10 @@ pub fn getLines(
 
   return lines.toOwnedSlice();
 }
+
+
+
+pub const FileID = usize;
 
 
 

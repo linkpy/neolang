@@ -1,10 +1,11 @@
 
 const std = @import("std");
-const IdentifierStorage = @import("../storage/identifier.zig");
-const Type = @import("../type/type.zig").Type;
 
-const bc = @import("./bytecode.zig");
-const Variant = @import("./variant.zig").Variant;
+const nl = @import("../nl.zig");
+const bc = nl.vm.bytecode;
+const IdentifierStorage = nl.storage.Identifier;
+const Type = nl.types.Type;
+const Variant = nl.vm.Variant;
 
 const BytecodeWriter = @This();
 

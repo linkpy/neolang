@@ -4,9 +4,11 @@
 
 
 const std = @import("std");
-const ast = @import("../parser/ast.zig");
 
-const Type = @import("./type.zig").Type;
+const nl = @import("../nl.zig");
+const ast = nl.parser.ast;
+const Type = nl.types.Type;
+
 const BinOp = ast.BinaryExpressionNode.Operator;
 const UnaOp = ast.UnaryExpressionNode.Operator;
 

@@ -4,15 +4,17 @@
 
 
 const std = @import("std");
-const Location = @import("../diagnostic/location.zig");
-const Type = @import("../type/type.zig").Type;
-const Variant = @import("../vm/variant.zig").Variant;
-
-const IdentifierStorage = @This();
-
 const Allocator = std.mem.Allocator;
+
+const nl = @import("../nl.zig");
+const Location = nl.diagnostic.Location;
+const Type = nl.types.Type;
+const Variant = nl.vm.Variant;
+
 const IdentifierMap = std.AutoHashMap(IdentifierID, Entry);
 const BindingMap = std.StringHashMap(IdentifierID);
+
+const IdentifierStorage = @This();
 
 
 

@@ -4,8 +4,10 @@
 
 
 const std = @import("std");
-const FileID = @import("../storage/file.zig").FileID;
-const Location = @import("../diagnostic/location.zig");
+
+const nl = @import("../nl.zig");
+const FileID = nl.storage.File.FileID;
+const Location = nl.diagnostic.Location;
 
 const Reader = @This();
 

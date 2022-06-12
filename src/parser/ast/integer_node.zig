@@ -4,13 +4,13 @@
 
 
 const std = @import("std");
-const Location = @import("../../diagnostic/location.zig");
-const Type =  @import("../../type/type.zig").Type;
-const Token = @import("../lexer.zig").Token;
-
-const flags = @import("./flags.zig");
-
 const Allocator = std.mem.Allocator;
+
+const nl = @import("../../nl.zig");
+const flags = nl.parser.ast.flags;
+const Location = nl.diagnostic.Location;
+const Type =  nl.types.Type;
+
 const IntegerNode = @This();
 
 

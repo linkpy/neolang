@@ -1,19 +1,18 @@
 
 const std = @import("std");
-const Location = @import("../../diagnostic/location.zig");
-const Token = @import("../lexer.zig").Token;
-const Type = @import("../../type/type.zig").Type;
-
-const flags = @import("./flags.zig");
-const IdentifierNode = @import("./identifier_node.zig");
-const IntegerNode = @import("./integer_node.zig");
-const StringNode = @import("./string_node.zig");
-const BinaryExpressionNode = @import("./binary_expression_node.zig");
-const UnaryExpressionNode = @import("./unary_expression_node.zig");
-const CallExpressionNode = @import("./call_expression_node.zig");
-const GroupExpressionNode = @import("./group_expression_node.zig");
-
 const Allocator = std.mem.Allocator;
+
+const nl = @import("../../nl.zig");
+const flags = nl.parser.ast.flags;
+const Location = nl.diagnostic.Location;
+const Type = nl.types.Type;
+const IdentifierNode = nl.parser.ast.IdentifierNode;
+const IntegerNode = nl.parser.ast.IntegerNode;
+const StringNode = nl.parser.ast.StringNode;
+const BinaryExpressionNode = nl.parser.ast.BinaryExpressionNode;
+const UnaryExpressionNode = nl.parser.ast.UnaryExpressionNode;
+const CallExpressionNode = nl.parser.ast.CallExpressionNode;
+const GroupExpressionNode = nl.parser.ast.GroupExpressionNode;
 
 
 

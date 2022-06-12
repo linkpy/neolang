@@ -1,7 +1,9 @@
-const std = @import("std");
-const ast = @import("../parser/ast.zig");
 
-const IntegerType = @import("./integer.zig");
+const std = @import("std");
+
+const nl = @import("../nl.zig");
+const ast = nl.parser.ast;
+const IntegerType = nl.types.IntegerType;
 
 const BinOp = ast.BinaryExpressionNode.Operator;
 const UnaOp = ast.UnaryExpressionNode.Operator;

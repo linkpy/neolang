@@ -4,11 +4,13 @@
 
 
 const std = @import("std");
-const FileStorage = @import("../storage/file.zig");
-const Diagnostics = @import("../diagnostic/diagnostics.zig");
-const Location = @import("../diagnostic/location.zig");
-const Lexer = @import("./lexer.zig");
-const ast = @import("./ast.zig");
+
+const nl = @import("../nl.zig");
+const ast = nl.parser.ast;
+const Lexer = nl.parser.Lexer;
+const FileStorage = nl.storage.File;
+const Diagnostics = nl.diagnostic.Diagnostics;
+const Location = nl.diagnostic.Location;
 
 const FileID = FileStorage.FileID;
 const Token = Lexer.Token;

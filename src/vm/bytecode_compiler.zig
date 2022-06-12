@@ -1,15 +1,16 @@
 
 const std = @import("std");
-const ast = @import("../parser/ast.zig");
-const Type = @import("../type/type.zig").Type;
-const Diagnostics = @import("../diagnostic/diagnostics.zig");
-const IdentifierStorage = @import("../storage/identifier.zig");
-
-const bc = @import("./bytecode.zig");
-const Variant  = @import("./variant.zig").Variant;
-const BytecodeWriter = @import("./bytecode_writer.zig");
-
 const Allocator = std.mem.Allocator;
+
+const nl = @import("../nl.zig");
+const ast = nl.parser.ast;
+const bc = nl.vm.bytecode;
+const Type = nl.types.Type;
+const Diagnostics = nl.diagnostic.Diagnostics;
+const IdentifierStorage = nl.storage.Identifier;
+const Variant = nl.vm.Variant;
+const BytecodeWriter = nl.vm.BytecodeWriter;
+
 const BytecodeCompiler = @This();
 
 

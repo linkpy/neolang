@@ -5,9 +5,10 @@
 
 const std = @import("std");
 
-const ast = @import("../parser/ast.zig");
-const IdentifierStorage = @import("../storage/identifier.zig");
-const Diagnostics = @import("../diagnostic/diagnostics.zig");
+const nl = @import("../nl.zig");
+const ast = nl.parser.ast;
+const Diagnostics = nl.diagnostic.Diagnostics;
+const IdentifierStorage = nl.storage.Identifier;
 
 const IdentifierResolver = @This();
 

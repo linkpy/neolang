@@ -1,5 +1,6 @@
 
-const Type = @import("../type/type.zig").Type;
+const nl = @import("../nl.zig");
+const Type = nl.types.Type;
 
 
 
