@@ -28,3 +28,14 @@ pub const ConstantExpressionFlag = enum {
     );
   }
 };
+
+
+
+/// Optional flags associated with each statement.
+/// 
+pub const StatementFlags = struct {
+  /// Show the token list making the statement.
+  show_tokens: bool = false,
+  /// Show the AST making the statement.
+  show_ast: bool = false,
+};

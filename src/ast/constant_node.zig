@@ -27,6 +27,11 @@ start_location: Location,
 /// End location of the node (usually, from the `.` symbol).
 end_location: Location,
 
+/// Optional documentation for this statement.
+documentation: ?[]const u8 = null,
+/// Additional flags added to the statement.
+flags: nl.ast.StatementFlags = .{},
+
 
 
 /// Deinitializes the node.

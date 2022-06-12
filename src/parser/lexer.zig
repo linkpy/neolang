@@ -100,6 +100,7 @@ pub fn readToken(
       ',' => self.readSingleCharacterToken(.comma),
       ';' => self.readSingleCharacterToken(.semicolon),
       '!' => self.readSingleCharacterToken(.exclam),
+      '#' => self.readSingleCharacterToken(.pound),
       '+' => self.readSingleCharacterToken(.plus),
       '-' => self.readSingleCharacterToken(.minus),
       '*' => self.readSingleCharacterToken(.star),
@@ -500,6 +501,7 @@ pub const Token = struct {
     semicolon,
     comma,
     exclam,
+    pound,
     // operator symbols
     plus,
     minus,

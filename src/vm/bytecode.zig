@@ -882,7 +882,7 @@ fn ophLor(
 
 
 const castIntFn = fn(a: Variant) Variant;
-const _castIntMap: [256]castIntFn = blk: {
+const castIntMap: [256]castIntFn = blk: {
   const fields = .{
     "ct_int", "i1", "i2", "i4", "i8", "u1", "u2", "u4", "u8", "iptr", "uptr"
   };

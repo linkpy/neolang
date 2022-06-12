@@ -29,6 +29,9 @@ lexer: *Lexer,
 /// Single token buffer.
 token: ?Token,
 
+/// Flags for the next statement.
+next_statement_flags: ast.StatementFlags = .{},
+
 
 
 /// Initialises a new parser.
@@ -52,9 +55,40 @@ pub fn init(
 
 
 
-// == Declarations == //
+
+
+
+
+
+
+// == Statements == //
 
 // TODO handle documentation for documentable nodes.
+
+
+
+pub fn parseStatement(
+  self: *Parser
+) Error!ast.ConstantNode {
+  try self.parseStatementFlags();
+  
+  var stmt = try self.parseConstant(); // TODO use switch
+  errdefer stmt.deinit(self.alloc);
+
+  if( stmt.flags.show_tokens )
+    try self.printStatementTokens(&stmt);
+
+  if( stmt.flags.show_ast ) {
+    std.log.debug("Printing the statement's AST:", .{});
+    ast.printer.printStatementNode( 
+      std.io.getStdOut().writer(), &stmt, 0, false 
+    ) catch {};
+  }
+
+  return stmt;
+}
+
+
 
 /// Parses a constant declaration.
 ///
@@ -111,12 +145,16 @@ pub fn parseConstant(
 
   const semicolon_token = try self.expectToken(.semicolon);
 
+  const stmt_flags = self.next_statement_flags;
+  self.next_statement_flags = .{};
+
   return ast.ConstantNode {
     .name = id_node,
     .type = type_expr,
     .value = value_node,
     .start_location = const_token.start_location,
     .end_location = semicolon_token.end_location,
+    .flags = stmt_flags,
   };
 }
 
@@ -581,6 +619,100 @@ pub fn parseGroup(
 
 
 
+// == Statement flags & statement debug utilities == //
+
+
+
+fn parseStatementFlags(
+  self: *Parser,
+) Error!void {
+  if( !try self.checkToken(.pound) )
+    return;
+  
+  self.nextToken();
+
+  _ = try self.expectToken(.left_ang);
+
+  while( true ) {
+    try self.skipWhitespace();
+
+    var id = try self.parseIdentifier();
+    defer id.deinit(self.alloc);
+
+    if( !try self.updateNextStatementFlags(&id) ) {
+      try self.diagnostics.pushError(
+        "Invalid statement flag.", .{},
+        id.getStartLocation(), id.getEndLocation(),
+      );
+
+      return Error.invalid_statement_flag;
+    }
+
+    try self.skipWhitespace();
+
+    if( !try self.checkToken(.comma) ) 
+      break;
+    
+    // skip the comma
+    self.nextToken();
+
+    try self.skipWhitespace();
+  }
+
+  _ = try self.expectToken(.right_ang);
+}
+
+fn updateNextStatementFlags(
+  self: *Parser,
+  id: *const ast.IdentifierNode
+) Error!bool {
+  const eql = std.mem.eql;
+
+  if( eql(u8, id.parts[0], "show_tokens") )
+    self.next_statement_flags.show_tokens = true
+  else if( eql(u8, id.parts[0], "show_ast") )
+    self.next_statement_flags.show_ast = true
+  else
+    return false;
+
+  return true;
+}
+
+
+
+fn printStatementTokens(
+  self: *Parser,
+  stmt: *const ast.ConstantNode // TODO use statement union
+) Error!void {
+  var lexer = self.lexer.*;
+  lexer.reader.location = stmt.getStartLocation();
+
+  std.log.debug("Printing statement's tokens:", .{});
+
+  while( lexer.reader.location.index < stmt.getEndLocation().index ) {
+    const token = (try lexer.readToken()) orelse unreachable;
+
+    switch( token.kind ) {
+      .whitespace, .comment => 
+        std.log.debug(" - {s} ({}:{} -> {}:{}) = <skipped>", .{ 
+          @tagName(token.kind), 
+          token.start_location.line, token.start_location.column,
+          token.end_location.line, token.end_location.column,
+        }),
+      else => 
+        std.log.debug(" - {s} ({}:{} -> {}:{}) = '{s}'", .{ 
+          @tagName(token.kind), 
+          token.start_location.line, token.start_location.column,
+          token.end_location.line, token.end_location.column,
+          token.value
+        }),
+    }
+  }
+
+}
+
+
+
 // == Token utilities == // 
 
 
@@ -780,4 +912,6 @@ pub const Error = error {
   unexpected_token,
   unexpected_end_of_file,
   unexpected_segmented_identifier,
+
+  invalid_statement_flag,
 } || Diagnostics.Error || Lexer.Error;
