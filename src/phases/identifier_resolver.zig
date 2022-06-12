@@ -67,6 +67,9 @@ pub fn resolveConstant(
     id = id_entry.id;
   }
 
+  if( cst.type ) |*typ|
+    try self.resolveExpression(typ, scope);
+  
   try self.resolveExpression(&cst.value, scope);
 
   if( id ) |i| {

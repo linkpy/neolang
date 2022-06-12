@@ -38,7 +38,11 @@ pub const Type = union(enum) {
   pub const UPtr = newInt(.pointer, false);
 
   /// Boolean.
-  pub const Bool = Type{ .boolean = {} };
+  pub const Bool = Type { .boolean = {} };
+
+  /// Type.
+  pub const TypeT = Type { .type = {} };
+
 
 
 
@@ -46,6 +50,9 @@ pub const Type = union(enum) {
   integer: IntegerType,
   /// Boolean type variant.
   boolean: void, // TODO add a Bool struct
+
+  /// Type type variant.
+  type: void,
 
 
 
@@ -69,6 +76,31 @@ pub const Type = union(enum) {
     return switch( self ) {
       .integer => |self_int| self_int.isSameAsType(other),
       .boolean => other == .boolean,
+      .type => other == .type,
+    };
+  }
+
+
+
+  pub fn canBeCoercedTo(
+    self: Type,
+    other: Type
+  ) bool {
+    return switch( self ) {
+      .integer => |int| int.canBeCoercedToType(other),
+      .boolean => other == .boolean,
+      .type => other == .type,
+    };
+  }
+
+  pub fn peerResolution(
+    self: Type,
+    other: Type
+  ) ?Type {
+    return switch( self ) {
+      .integer => |int| int.peerResolutionType(other),
+      .boolean => if( other == .boolean ) Type.Bool else null,
+      .type => if( other == .type ) Type.TypeT else null,
     };
   }
 
@@ -112,6 +144,7 @@ pub const Type = union(enum) {
     switch( self ) {
       .integer => |int| try int.format(fmt, options, writer),
       .boolean => try writer.writeAll("bool"),
+      .type => try writer.writeAll("type"),
     }
   }
 

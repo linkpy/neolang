@@ -52,7 +52,7 @@ pub fn init(
 
 // == Declarations == //
 
-
+// TODO handle documentation for documentable nodes.
 
 /// Parses a constant declaration.
 ///
@@ -85,6 +85,19 @@ pub fn parseConstant(
 
   try self.skipWhitespace();
 
+  var type_expr: ?ast.ExpressionNode = null;
+  errdefer if( type_expr ) |*expr| expr.deinit(self.alloc);
+
+  if( try self.checkToken(.colon) ) {
+    self.nextToken();
+
+    try self.skipWhitespace();
+
+    type_expr = try self.parseExpressionAtom();
+
+    try self.skipWhitespace();
+  }
+
   _ = try self.expectToken(.equal);
 
   try self.skipWhitespace();
@@ -98,6 +111,7 @@ pub fn parseConstant(
 
   return ast.ConstantNode {
     .name = id_node,
+    .type = type_expr,
     .value = value_node,
     .start_location = const_token.start_location,
     .end_location = semicolon_token.end_location,
@@ -184,7 +198,8 @@ pub fn parseBinaryExpression(
   initial_left_node: ?ast.ExpressionNode,
 ) Error!ast.ExpressionNode {
   var left_node = initial_left_node orelse try self.parseUnaryExpression();
-  errdefer left_node.deinit(self.alloc);
+  errdefer if( initial_left_node == null ) 
+    left_node.deinit(self.alloc);
 
   while( try self.parseBinaryOperator() ) |op| {
     try self.skipWhitespace();
@@ -473,7 +488,7 @@ pub fn parseInteger(
   const token = try self.expectToken(.integer);
   var type_flag = ast.IntegerNode.TypeFlag.ct;
   var end_loc = token.end_location;
-  
+
   if( try self.peekToken() ) |tok| {
     if( tok.kind == .identifier ) {
       const TypeFlag = ast.IntegerNode.TypeFlag;
@@ -670,13 +685,13 @@ fn expectToken(
 
 
 
-/// Skips whitespace tokens.
+/// Skips whitespace and comment tokens.
 ///
 fn skipWhitespace(
   self: *Parser
 ) Lexer.Error!void {
   while( try self.peekToken() ) |token| {
-    if( token.kind != .whitespace )
+    if( token.kind != .whitespace and token.kind != .comment )
       break;
     
     self.nextToken();

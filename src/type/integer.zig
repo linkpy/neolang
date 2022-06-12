@@ -63,7 +63,87 @@ pub fn isSameAs(
   self: IntegerType,
   other: IntegerType 
 ) bool {
-  return self.size == other.size and self.signed == other.signed;
+  return self.width.eq(other.width) and self.signed == other.signed;
+}
+
+
+
+pub fn canBeCoercedToType(
+  self: IntegerType,
+  to: Type,
+) bool {
+  return switch( to ) {
+    .integer => |int| self.canBeCoercedToInt(int),
+    else => false,
+  };
+}
+
+pub fn canBeCoercedToInt(
+  self: IntegerType,
+  to: IntegerType
+) bool {
+  if( self.width == .dynamic or to.width == .dynamic ) {
+    return true;
+
+  } else {
+    if( self.signed != to.signed )
+      return false;
+    
+    switch( self.width ) {
+      .bytes => |self_width| switch( to.width ) {
+        .bytes => |to_width| return self_width <= to_width,
+        else => return false,
+      },
+      .pointer => return to.width == .pointer,
+      else => unreachable,
+    }
+  }
+}
+
+
+
+pub fn peerResolutionType(
+  self: IntegerType,
+  other: Type
+) ?Type {
+  return switch( other ) {
+    .integer => |int| self.peerResolutionInt(int),
+    else => null,
+  };
+}
+
+pub fn peerResolutionInt(
+  self: IntegerType,
+  other: IntegerType
+) ?Type {
+  if( self.width == .dynamic and other.width == .dynamic ) {
+    return Type.CtInt;
+
+  } else if( self.width == .dynamic and other.width != .dynamic ) {
+    return other.toType();
+
+  } else if( self.width != .dynamic and other.width == .dynamic ) {
+    return self.toType();
+
+  } else {
+    if( self.signed != other.signed )
+      return null;
+    
+    switch( self.width ) {
+      .bytes => |self_width| switch( other.width ) {
+        .bytes => |other_width| if( self_width > other_width )
+          return self.toType()
+        else 
+          return other.toType(),
+        else => return null,
+      },
+      .pointer => switch( other.width ) {
+        .pointer => return self.toType(),
+        else => return null,
+      },
+      else => unreachable,
+    }
+  }
 }
 
 
@@ -172,4 +252,20 @@ pub const Width = union(enum) {
   dynamic: void,
   bytes: u8,
   pointer: void,
+
+
+
+  pub fn eq(
+    a: Width,
+    b: Width
+  ) bool {
+    return switch( a ) {
+      .dynamic => b == .dynamic,
+      .bytes => |ab| switch( b ) {
+        .bytes => |bb| ab == bb,
+        else => false,
+      },
+      .pointer => b == .pointer,
+    };
+  }
 };

@@ -2,13 +2,14 @@
 ///
 
 // TODO remove order dependence
+// TODO check that integer fits their type
 
 const std = @import("std");
 
 const ast = @import("../parser/ast.zig");
 const IdentifierStorage = @import("../storage/identifier.zig");
 const Diagnostics = @import("../diagnostic/diagnostics.zig");
-const Type = @import("../type/type.zig");
+const Type = @import("../type/type.zig").Type;
 
 const TypeResolver = @This();
 
@@ -45,7 +46,29 @@ pub fn resolveConstant(
   cst: *ast.ConstantNode
 ) Error!void {
   if( cst.name.identifier_id ) |id| {
+    
+    if( cst.type ) |*type_expr| {
+      try self.resolveExpression(type_expr);
+
+      if( type_expr.getType() ) |typ| {
+        if( !typ.isSameAs(Type.TypeT) ) {
+          try self.diagnostics.pushError(
+            "Expected a type, got a {}.",
+            .{ typ },
+            type_expr.getStartLocation(),
+            type_expr.getEndLocation()
+          );
+
+          return;
+        }
+      }
+
+
+    }
+
     try self.resolveExpression(&cst.value);
+
+
 
     if( cst.value.getType() ) |typ| {
       var entry = self.identifiers.getEntry(id).?;
@@ -94,7 +117,11 @@ pub fn resolveIdentifier(
 
       } else {
 
-        @panic("not sure if it's ok");
+        try self.diagnostics.pushVerbose(
+          "Identifier without ID", .{}, false,
+          id_expr.getStartLocation(),
+          id_expr.getEndLocation()
+        );
       }
     }
 

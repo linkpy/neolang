@@ -14,6 +14,8 @@ const ast = @import("./parser/ast.zig");
 const IdResolver = @import("./phases/identifier_resolver.zig");
 const TypeResolver = @import("./phases/type_resolver.zig");
 
+const Evaluator = @import("./vm/evaluator.zig");
+
 
 
 pub fn main() anyerror!void {
@@ -27,6 +29,8 @@ pub fn main() anyerror!void {
 
   var id_storage = IdStorage.init(alloc);
   defer id_storage.deinit();
+
+  try id_storage.registerBuiltins();
 
   var file_id = try file_storage.addDiskFile("sketchs/1.nl");
 
@@ -45,25 +49,33 @@ pub fn main() anyerror!void {
   var cst0 = try parser.parseConstant();
   defer cst0.deinit(alloc);
 
-  var cst1 = try parser.parseConstant();
-  defer cst1.deinit(alloc);
+  // var cst1 = try parser.parseConstant();
+  // defer cst1.deinit(alloc);
 
-  var cst2 = try parser.parseConstant();
-  defer cst2.deinit(alloc);
+  // var cst2 = try parser.parseConstant();
+  // defer cst2.deinit(alloc);
 
   var id_resolver = IdResolver.init(&diags, &id_storage);
   var scope = id_storage.scope();
   defer scope.deinit();
 
+  try scope.bindBuiltins();
+
+
   try id_resolver.resolveConstant(&cst0, &scope);
-  try id_resolver.resolveConstant(&cst1, &scope);
-  try id_resolver.resolveConstant(&cst2, &scope);
+  // try id_resolver.resolveConstant(&cst1, &scope);
+  // try id_resolver.resolveConstant(&cst2, &scope);
 
 
   var type_resolver = TypeResolver.init(&diags, &id_storage);
   try type_resolver.resolveConstant(&cst0);
-  try type_resolver.resolveConstant(&cst1);
-  try type_resolver.resolveConstant(&cst2);
+  // try type_resolver.resolveConstant(&cst1);
+  // try type_resolver.resolveConstant(&cst2);
+
+  var eval = Evaluator.init(alloc, &diags, &id_storage);
+  var result = try eval.evaluateExpression(&cst0.value, null);
+
+  std.log.info("Result: {}", .{ result });
 }
 
 

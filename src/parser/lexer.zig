@@ -100,7 +100,9 @@ pub fn readToken(
       '+' => self.readSingleCharacterToken(.plus),
       '-' => self.readSingleCharacterToken(.minus),
       '*' => self.readSingleCharacterToken(.star),
-      '/' => self.readSingleCharacterToken(.slash),
+      '/' => self.readCommentToken() 
+        orelse self.readDocumentationToken()
+        orelse self.readSingleCharacterToken(.slash),
       '%' => self.readSingleCharacterToken(.percent),
       '=' => self.readSingleCharacterToken(.equal),
       '<' => self.readSingleCharacterToken(.left_ang),
@@ -187,6 +189,58 @@ fn readWhitespaceToken(
     .value = self.reader.sliceFrom(start_loc.index),
     .start_location = start_loc,
     .end_location = end_loc,
+  };
+}
+
+/// Reads a comment token.
+/// 
+fn readCommentToken(
+  self: *Lexer
+) ?Token {
+  const start_loc = self.reader.location;
+
+  if( !self.checkForCommentMarker() ) 
+    return null;
+  
+  while( self.reader.peekChar() ) |char| {
+    if( char == '\n' ) {
+      if( !self.checkForCommentMarker() )
+        break;
+    }
+
+    self.reader.advance(1);
+  }
+
+  return Token {
+    .kind = .comment,
+    .value = self.reader.sliceFrom(start_loc.index),
+    .start_location = start_loc,
+    .end_location = self.reader.location,
+  };
+}
+
+fn readDocumentationToken(
+  self: *Lexer
+) ?Token {
+  const start_loc = self.reader.location;
+
+  if( !self.checkForDocumentationMarker() ) 
+    return null;
+  
+  while( self.reader.peekChar() ) |char| {
+    if( char == '\n' ) {
+      if( !self.checkForDocumentationMarker() )
+        break;
+    }
+
+    self.reader.advance(1);
+  }
+
+  return Token {
+    .kind = .documentation,
+    .value = self.reader.sliceFrom(start_loc.index),
+    .start_location = start_loc,
+    .end_location = self.reader.location,
   };
 }
 
@@ -392,6 +446,27 @@ fn readIdentifierToken(
 
 
 
+fn checkForCommentMarker(
+  self: Lexer
+) bool {
+  if( self.reader.isEndOfFileAt(1) )
+    return false;
+  
+  return std.mem.eql(u8, self.reader.slice(2), "//") 
+    and (self.reader.peekCharAt(2) orelse 0) != '/';
+}
+
+fn checkForDocumentationMarker(
+  self: *Lexer
+) bool {
+  if( self.reader.isEndOfFileAt(2) ) 
+    return false;
+
+  return std.mem.eql(u8, self.reader.slice(3), "///");
+}
+
+
+
 /// Object representing a token returned by a `Lexer`.
 ///
 pub const Token = struct {
@@ -411,6 +486,8 @@ pub const Token = struct {
   pub const Kind = enum {
     // spaces
     whitespace,
+    comment,
+    documentation,
     // symbols
     colon,
     left_par,

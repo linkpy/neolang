@@ -17,6 +17,8 @@ const ConstantNode = @This();
 
 /// Name of the constant.
 name: IdentifierNode,
+/// Type of the constant. Defined in the source.
+type: ?ExpressionNode,
 /// Value of the constant.
 value: ExpressionNode,
 
@@ -38,6 +40,7 @@ pub fn deinit(
   alloc: Allocator
 ) void {
   self.name.deinit(alloc);
+  if( self.type ) |*expr| expr.deinit(alloc);
   self.value.deinit(alloc);
 }
 

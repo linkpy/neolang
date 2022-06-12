@@ -5,6 +5,8 @@
 
 const std = @import("std");
 const Location = @import("../diagnostic/location.zig");
+const Type = @import("../type/type.zig").Type;
+const Variant = @import("../vm/variant.zig").Variant;
 
 const IdentifierStorage = @This();
 
@@ -52,9 +54,7 @@ pub fn newID(
   self: *IdentifierStorage
 ) Allocator.Error!IdentifierID {
   const entry = Entry {
-    .id = self.next_id,
-    .start_location = undefined,
-    .end_location = undefined
+    .id = self.next_id
   };
 
   try self.identifiers.put(entry.id, entry);
@@ -100,6 +100,73 @@ pub fn scope(
 
 
 
+pub const Builtin = enum(IdentifierID) {
+  ct_int,
+  i1, i2, i4, i8,
+  u1, u2, u4, u8,
+  iptr, uptr,
+  bool,
+  type,
+
+
+
+  pub fn id(
+    self: Builtin
+  ) IdentifierID {
+    return @enumToInt(self);
+  }
+};
+
+
+
+pub fn registerBuiltins(
+  self: *IdentifierStorage
+) Allocator.Error!void {
+  try self.newBuiltinType(Type.CtInt);
+  try self.newBuiltinType(Type.I1);
+  try self.newBuiltinType(Type.I2);
+  try self.newBuiltinType(Type.I4);
+  try self.newBuiltinType(Type.I8);
+  try self.newBuiltinType(Type.U1);
+  try self.newBuiltinType(Type.U2);
+  try self.newBuiltinType(Type.U4);
+  try self.newBuiltinType(Type.U8);
+  try self.newBuiltinType(Type.IPtr);
+  try self.newBuiltinType(Type.UPtr);
+  try self.newBuiltinType(Type.Bool);
+  try self.newBuiltinType(Type.TypeT);
+}
+
+fn newBuiltin(
+  self: *IdentifierStorage,
+  entry: Entry
+) Allocator.Error!void {
+  var e = try self.newEntry();
+  const id = e.id;
+
+  e.* = entry;
+
+  e.id = id;
+  e.builtin = true;
+}
+
+fn newBuiltinType(
+  self: *IdentifierStorage,
+  typ: Type
+) Allocator.Error!void {
+
+  try self.newBuiltin(Entry {
+    .id = undefined,
+    .data = .{ .expression = .{
+      .constantness = .constant,
+      .type = Type.TypeT,
+    }},
+    .value = Variant { .type = typ },
+  });
+}
+
+
+
 /// ID used to represent an identifier.
 ///
 pub const IdentifierID = usize;
@@ -125,6 +192,26 @@ pub const Scope = struct {
     self: *Scope
   ) void {
     self.bindings.deinit();
+  }
+
+
+
+  pub fn bindBuiltins(
+    self: *Scope
+  ) Allocator.Error!void {
+    try self.bindings.put("ct_int", Builtin.ct_int.id());
+    try self.bindings.put("i1", Builtin.i1.id());
+    try self.bindings.put("i2", Builtin.i2.id());
+    try self.bindings.put("i4", Builtin.i4.id());
+    try self.bindings.put("i8", Builtin.i8.id());
+    try self.bindings.put("u1", Builtin.u1.id());
+    try self.bindings.put("u2", Builtin.u2.id());
+    try self.bindings.put("u4", Builtin.u4.id());
+    try self.bindings.put("u8", Builtin.u8.id());
+    try self.bindings.put("iptr", Builtin.iptr.id());
+    try self.bindings.put("uptr", Builtin.uptr.id());
+    try self.bindings.put("bool", Builtin.bool.id());
+    try self.bindings.put("type", Builtin.type.id());
   }
 
 
@@ -214,17 +301,21 @@ pub const Scope = struct {
 pub const Entry = struct {
   /// ID associated with the entry.
   id: IdentifierID,
+  /// If true, this identifier is builtin and thus has no locations.
+  builtin: bool = false,
 
   /// Starting location of the identifier's source.
-  start_location: Location,
+  start_location: Location = undefined,
   /// Ending location of the identifier's source.
-  end_location: Location,
+  end_location: Location = undefined,
 
   /// If true, the identifier is being defined (used for recursive declarations).
   is_being_defined: bool = false,
 
   /// Additional data associated with the identifier.
   data: Data = .{ .none = {} },
+  /// Compile-time value of the identifier.
+  value: Variant = .none,
 
 
 
@@ -236,7 +327,6 @@ pub const Entry = struct {
 
     pub const Expression = struct {
       const ast_flags = @import("../parser/ast/flags.zig");
-      const Type = @import("../type/type.zig").Type;
 
       constantness: ast_flags.ConstantExpressionFlag = .unknown,
       type: ?Type,
