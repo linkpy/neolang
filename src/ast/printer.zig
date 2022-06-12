@@ -7,6 +7,8 @@ const ast = nl.ast;
 
 
 
+/// Prints the AST of the given statement node.
+///
 pub fn printStatementNode(
   writer: anytype,
   stmt: *const ast.ConstantNode, // TODO use statement union,
@@ -18,6 +20,8 @@ pub fn printStatementNode(
 
 
 
+/// Prints the AST of the given constant node.
+///
 pub fn printConstantNode(
   writer: anytype,
   cst: *const ast.ConstantNode,
@@ -47,6 +51,8 @@ pub fn printConstantNode(
 
 
 
+/// Prints the AST of the given expression node.
+///
 pub fn printExpressionNode(
   writer: anytype,
   expr: *const ast.ExpressionNode,
@@ -64,6 +70,8 @@ pub fn printExpressionNode(
   }
 }
 
+/// Prints the AST of the given identifier node.
+///
 pub fn printIdentifierNode(
   writer: anytype,
   id: *const ast.IdentifierNode,
@@ -89,6 +97,8 @@ pub fn printIdentifierNode(
   }
 }
 
+/// Prints the AST of the given integer node.
+///
 pub fn printIntegerNode(
   writer: anytype,
   int: *const ast.IntegerNode,
@@ -104,6 +114,8 @@ pub fn printIntegerNode(
   }
 }
 
+/// Prints the AST of the given string node.
+///
 pub fn printStringNode(
   writer: anytype,
   str: *const ast.StringNode,
@@ -118,6 +130,8 @@ pub fn printStringNode(
   }
 }
 
+/// Prints the AST of the given binary expression node.
+///
 pub fn printBinaryExpressionNode(
   writer: anytype,
   bin: *const ast.BinaryExpressionNode,
@@ -141,6 +155,8 @@ pub fn printBinaryExpressionNode(
 
 }
 
+/// Prints the AST of the given unary expression node.
+///
 pub fn printUnaryExpressionNode(
   writer: anytype,
   una: *const ast.UnaryExpressionNode,
@@ -161,6 +177,8 @@ pub fn printUnaryExpressionNode(
 
 }
 
+/// Prints the AST of the given call expression node.
+///
 pub fn printCallExpressionNode(
   writer: anytype,
   call: *const ast.CallExpressionNode,
@@ -183,6 +201,8 @@ pub fn printCallExpressionNode(
   }
 }
 
+/// Prints the AST of the given group node.
+///
 pub fn printGroupExpressionNode(
   writer: anytype,
   grp: *const ast.GroupExpressionNode,
@@ -201,6 +221,8 @@ pub fn printGroupExpressionNode(
 
 
 
+/// Prints a formated string with the given indent.
+///
 fn printWithIndent(
   writer: anytype,
   indent: usize,

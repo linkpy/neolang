@@ -70,14 +70,17 @@ pub fn resolveConstant(
     try self.resolveExpression(&cst.value);
 
 
-
     if( cst.value.getType() ) |typ| {
       var entry = self.identifiers.getEntry(id).?;
 
+      cst.name.constantness = cst.value.getConstantness();
+      cst.name.type = typ;
+
       entry.data = .{ .expression = .{
-        .constantness = cst.value.getConstantness(),
+        .constantness = cst.name.constantness,
         .type = typ,
       }};
+
     }
   }
 }
