@@ -6,7 +6,7 @@
 const std = @import("std");
 
 const nl = @import("../nl.zig");
-const ast = nl.parser.ast;
+const ast = nl.ast;
 const Type = nl.types.Type;
 
 const BinOp = ast.BinaryExpressionNode.Operator;

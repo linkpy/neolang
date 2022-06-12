@@ -6,11 +6,11 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-const nl = @import("../../nl.zig");
-const flags = nl.parser.ast.flags;
+const nl = @import("../nl.zig");
+const flags = nl.ast.flags; 
 const Location = nl.diagnostic.Location;
 const Type = nl.types.Type;
-const ExpressionNode = nl.parser.ast.ExpressionNode;
+const ExpressionNode = nl.ast.ExpressionNode;
 
 const BinaryExpressionNode = @This();
 

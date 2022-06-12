@@ -328,9 +328,7 @@ pub const Entry = struct {
 
 
     pub const Expression = struct {
-      const ast_flags = @import("../parser/ast/flags.zig");
-
-      constantness: ast_flags.ConstantExpressionFlag = .unknown,
+      constantness: nl.ast.ConstantExpressionFlag = .unknown,
       type: ?Type,
     };
   };

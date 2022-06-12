@@ -6,7 +6,7 @@
 const std = @import("std");
 
 const nl = @import("../nl.zig");
-const ast = nl.parser.ast;
+const ast = nl.ast;
 const Diagnostics = nl.diagnostic.Diagnostics;
 const IdentifierStorage = nl.storage.Identifier;
 

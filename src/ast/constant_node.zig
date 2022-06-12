@@ -6,10 +6,10 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-const nl = @import("../../nl.zig");
+const nl = @import("../nl.zig");
 const Location = nl.diagnostic.Location;
-const IdentifierNode = nl.parser.ast.IdentifierNode;
-const ExpressionNode = nl.parser.ast.ExpressionNode;
+const IdentifierNode = nl.ast.IdentifierNode;
+const ExpressionNode = nl.ast.ExpressionNode;
 
 const ConstantNode = @This();
 

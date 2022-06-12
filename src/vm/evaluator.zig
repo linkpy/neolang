@@ -7,7 +7,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 const nl = @import("../nl.zig");
-const ast = nl.parser.ast;
+const ast = nl.ast;
 const bc = nl.vm.bytecode;
 const Type = nl.types.Type;
 const Diagnostics = nl.diagnostic.Diagnostics;

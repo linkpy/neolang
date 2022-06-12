@@ -6,8 +6,8 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-const nl = @import("../../nl.zig");
-const flags = nl.parser.ast.flags;
+const nl = @import("../nl.zig");
+const flags = nl.ast.flags;
 const Location = nl.diagnostic.Location;
 
 const StringNode = @This();

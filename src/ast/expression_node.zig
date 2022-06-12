@@ -2,17 +2,17 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-const nl = @import("../../nl.zig");
-const flags = nl.parser.ast.flags;
+const nl = @import("../nl.zig");
+const flags = nl.ast.flags;
 const Location = nl.diagnostic.Location;
 const Type = nl.types.Type;
-const IdentifierNode = nl.parser.ast.IdentifierNode;
-const IntegerNode = nl.parser.ast.IntegerNode;
-const StringNode = nl.parser.ast.StringNode;
-const BinaryExpressionNode = nl.parser.ast.BinaryExpressionNode;
-const UnaryExpressionNode = nl.parser.ast.UnaryExpressionNode;
-const CallExpressionNode = nl.parser.ast.CallExpressionNode;
-const GroupExpressionNode = nl.parser.ast.GroupExpressionNode;
+const IdentifierNode = nl.ast.IdentifierNode;
+const IntegerNode = nl.ast.IntegerNode;
+const StringNode = nl.ast.StringNode;
+const BinaryExpressionNode = nl.ast.BinaryExpressionNode;
+const UnaryExpressionNode = nl.ast.UnaryExpressionNode;
+const CallExpressionNode = nl.ast.CallExpressionNode;
+const GroupExpressionNode = nl.ast.GroupExpressionNode;
 
 
 
