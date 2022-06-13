@@ -55,6 +55,35 @@ pub fn init(
 
 
 
+// == File == //
+
+
+
+pub fn parseFile(
+  self: *Parser
+) Error![]ast.StatementNode {
+  var list = std.ArrayList(ast.StatementNode).init(self.alloc);
+  errdefer {
+    for( list.items ) |*i| i.deinit(self.alloc);
+    list.deinit();
+  }
+
+  try self.skipWhitespace();
+
+  while( !self.isAtEnd() ) {
+    var stmt = try self.parseStatement();
+    errdefer stmt.deinit(self.alloc);
+    
+    try self.skipWhitespace();
+    
+    try list.append(stmt);
+  }
+
+  return list.toOwnedSlice();
+}
+
+
+
 // == Statements == //
 
 // TODO handle documentation for documentable nodes.

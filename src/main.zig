@@ -46,34 +46,25 @@ pub fn main() anyerror!void {
   var parser = Parser.init(alloc, &lexer);
 
 
-  var stmt0 = try parser.parseStatement();
-  defer stmt0.deinit(alloc);
+  var stmts = try parser.parseFile();
+  defer {
+    for( stmts ) |*stmt| stmt.deinit(alloc);
+    alloc.free(stmts);
+  }
 
-  // var cst1 = try parser.parseConstant();
-  // defer cst1.deinit(alloc);
+  // var id_resolver = IdResolver.init(&diags, &id_storage);
+  // var scope = id_storage.scope();
+  // defer scope.deinit();
 
-  // var cst2 = try parser.parseConstant();
-  // defer cst2.deinit(alloc);
+  // try scope.bindBuiltins();
 
-  var id_resolver = IdResolver.init(&diags, &id_storage);
-  var scope = id_storage.scope();
-  defer scope.deinit();
+  // try id_resolver.resolveStatement(&stmt0, &scope);
 
-  try scope.bindBuiltins();
+  // var type_resolver = TypeResolver.init(&diags, &id_storage);
+  // try type_resolver.resolveStatement(&stmt0);
 
-
-  try id_resolver.resolveStatement(&stmt0, &scope);
-  // try id_resolver.resolveConstant(&cst1, &scope);
-  // try id_resolver.resolveConstant(&cst2, &scope);
-
-
-  var type_resolver = TypeResolver.init(&diags, &id_storage);
-  try type_resolver.resolveStatement(&stmt0);
-  // try type_resolver.resolveConstant(&cst1);
-  // try type_resolver.resolveConstant(&cst2);
-
-  try nl.ast.printer.printStatementNode(
-    std.io.getStdOut().writer(), &stmt0, 0, true
-  );
+  // try nl.ast.printer.printStatementNode(
+  //   std.io.getStdOut().writer(), &stmt0, 0, true
+  // );
 }
 
