@@ -16,6 +16,7 @@ pub const GroupExpressionNode = @import("./ast/group_expression_node.zig");
 // other
 pub const flags = @import("./ast/flags.zig");
 pub const printer = @import("./ast/printer.zig");
+pub const traverser = @import("./ast/traverser.zig");
 
 pub const ConstantExpressionFlag = flags.ConstantExpressionFlag;
 pub const StatementFlags = flags.StatementFlags;

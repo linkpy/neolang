@@ -54,12 +54,12 @@ pub fn main() anyerror!void {
 
 
   var id_resolver = IdResolver.init(
-    &diags,
-    &id_storage
+    alloc, &diags, &id_storage
   );
+  defer id_resolver.deinit();
 
-  if( id_resolver.resolveFile(stmts) ) |v| {
-    std.log.info("Indentifier resolution: {}", .{ v  });
+  if( id_resolver.processFile(stmts) ) |v| {
+    std.log.info("Indentifier resolution: {} (errors: {})", .{ v, id_resolver.errors });
   } else |err| {
     std.log.info("Error occured: {}", .{ err });
   }
@@ -72,4 +72,5 @@ pub fn main() anyerror!void {
       true
     );
   }
+
 }

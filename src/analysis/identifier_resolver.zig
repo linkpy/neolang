@@ -7,8 +7,10 @@ const std = @import("std");
 
 const nl = @import("../nl.zig");
 const ast = nl.ast;
+const trv = nl.ast.traverser;
 const Diagnostics = nl.diagnostic.Diagnostics;
 const IdentifierStorage = nl.storage.Identifier;
+const Scope = IdentifierStorage.Scope;
 
 const IdentifierResolver = @This();
 
@@ -19,10 +21,8 @@ diagnostics: *Diagnostics,
 /// Registered identifiers.
 identifiers: *IdentifierStorage,
 
-/// Number of identifier resolved.
-resolved: usize = 0,
-/// Number of identifier unresolved.
-unresolved: usize = 0,
+/// Scopes.
+scopes: std.ArrayList(Scope),
 /// Number of errors detected.
 errors: usize = 0,
 
@@ -31,235 +31,181 @@ errors: usize = 0,
 /// Initialises a new instance.
 ///
 pub fn init(
+  alloc: std.mem.Allocator,
   diags: *Diagnostics,
   ids: *IdentifierStorage
 ) IdentifierResolver {
   return IdentifierResolver {
     .diagnostics = diags,
     .identifiers = ids,
+    .scopes = std.ArrayList(Scope).init(alloc)
   };
 }
 
+pub fn deinit(
+  self: *IdentifierResolver
+) void {
+  for( self.scopes.items ) |*i| i.deinit();
+  self.scopes.deinit();
+}
 
 
-pub fn resolveFile(
+/// Resolves all of the identifiers in a file
+///
+pub fn processFile(
   self: *IdentifierResolver,
-  stmts: []ast.StatementNode,
+  stmts: []ast.StatementNode
 ) Error!bool {
-  var scope = self.identifiers.scope();
-  defer scope.deinit();
+  self.errors = 0;
 
-  try scope.bindBuiltins();
+  var root_scope = self.identifiers.scope();
+  try root_scope.bindBuiltins();
 
-  self.resolved = 0;
-  self.unresolved = 0;
+  try self.scopes.append(root_scope);
 
-  var last_resolved: usize = 0;
-  var last_unresolved: usize = 0;
 
-  while( true ) {
-    for( stmts ) |*stmt| {
-      try self.resolveStatement(stmt, &scope, false);
-    }
+  defer {
+    for( self.scopes.items ) |*scope| scope.deinit();
+    self.scopes.clearAndFree();
+  }
 
-    // stalemate
-    if( self.resolved == last_resolved and self.unresolved == last_unresolved ) {
-      // nothing in the file
-      if( self.resolved == 0 and self.unresolved == 0 )
-        return true
-      else {
-        for( stmts ) |*stmt| {
-          try self.resolveStatement(stmt, &scope, true);
-        }
+  try self.scoutFile(stmts);
 
-        return self.unresolved == 0 and self.errors == 0;
-      }
-    }
+  if( self.errors > 0 )
+    return false;
 
-    last_resolved = self.resolved;
-    last_unresolved = self.unresolved;
+  try self.resolveFile(stmts);
+
+  return self.errors == 0;
+}
+
+
+
+fn scoutFile(
+  self: *IdentifierResolver,
+  stmts: []ast.StatementNode
+) Error!void {
+  for( stmts ) |*stmt| {
+    try trv.traverseStatement(scoutFns, self, stmt);
+  }
+}
+
+
+const scoutFns: TraverserFns = .{
+  .visitIdentifierDefinition = scoutIdentifierDefinition,
+};
+
+fn scoutIdentifierDefinition(
+  self: *IdentifierResolver,
+  id: *ast.IdentifierNode
+) Error!void {
+  if( id.isSegmented() )
+    @panic("NYI");
+
+  var scope: *Scope = &self.scopes.items[self.scopes.items.len - 1];
+
+  if( scope.hasBinding(id.parts[0]) ) {
+    try self.diagnostics.pushError(
+      "Declaration of '{s}' overshadows a previous declaration.",
+      .{ id.parts[0] },
+      id.getStartLocation(), id.getEndLocation()
+    );
+
+    self.errors += 1;
+
+  } else {
+
+    var entry = try scope.bindEntry(id.parts[0]);
+    entry.start_location = id.getStartLocation();
+    entry.end_location = id.getEndLocation();
+
+    id.identifier_id = entry.id;
   }
 }
 
 
 
-/// Resolves the identifiers in a statement node.
-///
-pub fn resolveStatement(
+fn resolveFile(
   self: *IdentifierResolver,
-  stmt: *ast.StatementNode,
-  scope: *IdentifierStorage.Scope,
-  add_diags: bool
+  stmts: []ast.StatementNode
 ) Error!void {
-  switch( stmt.* ) {
-    .constant => |*cst| try self.resolveConstant(cst, scope, add_diags),
+  for( stmts ) |*stmt| {
+    try trv.traverseStatement(resolveFns, self, stmt);
   }
 }
 
-/// Resolves the identifiers in a constant declaration.
-///
-pub fn resolveConstant(
+const resolveFns: TraverserFns = .{
+  .enterConstant = resolveEnterConstant,
+  .exitConstant = resolveExitConstant,
+  .visitIdentifierUsage = resolveIdentifierUsage,
+};
+
+fn resolveEnterConstant(
   self: *IdentifierResolver,
-  cst: *ast.ConstantNode,
-  scope: *IdentifierStorage.Scope,
-  add_diags: bool,
+  cst: *ast.ConstantNode
 ) Error!void {
-  var id: ?IdentifierStorage.IdentifierID = null;
+  if( cst.name.identifier_id ) |id| {
+    var entry = self.identifiers.getEntry(id).?;
 
-  if( !cst.name.id_resolver_md.resolved ) {
-    if( scope.hasBinding(cst.name.parts[0]) ) {
-
-      if( add_diags ) {
-        try self.diagnostics.pushError(
-          "The declaration of '{s}' overshadows a previous declaration.",
-          .{ cst.name.parts[0] },
-          cst.name.getStartLocation(),
-          cst.name.getEndLocation(),
-        );
-      }
-
-      if( !cst.name.id_resolver_md.errored ) {
-        cst.name.id_resolver_md.errored = true;
-        self.errors += 1;
-      }
-
-    } else {
-      var id_entry = try scope.bindEntry(cst.name.parts[0]);
-
-      id_entry.start_location = cst.name.getStartLocation();
-      id_entry.end_location = cst.name.getEndLocation();
-
-      cst.name.identifier_id = id_entry.id;
-      id_entry.is_being_defined = true;
-      
-      id = id_entry.id;
-
-      cst.name.id_resolver_md.resolved = true;
-    }
+    entry.is_being_defined = true;
   }
+}
 
-  if( cst.type ) |*typ|
-    try self.resolveExpression(typ, scope, add_diags);
-  
-  try self.resolveExpression(&cst.value, scope, add_diags);
+fn resolveExitConstant(
+  self: *IdentifierResolver,
+  cst: *ast.ConstantNode
+) Error!void {
+  if( cst.name.identifier_id ) |id| {
+    var entry = self.identifiers.getEntry(id).?;
 
-  if( id ) |i| {
-    var entry = self.identifiers.getEntry(i).?;
     entry.is_being_defined = false;
   }
 }
 
-
-
-/// Resolves the identifiers in an expression node.
-///
-pub fn resolveExpression(
+fn resolveIdentifierUsage(
   self: *IdentifierResolver,
-  expr: *ast.ExpressionNode,
-  scope: *IdentifierStorage.Scope,
-  add_diags: bool,
+  id_node: *ast.IdentifierNode
 ) Error!void {
-  switch( expr.* ) {
-    .integer, .string => {},
-    .identifier => |*id| try self.resolveIdentifier(id, scope, add_diags),
-    .unary => |*una| try self.resolveExpression(una.child, scope, add_diags),
-    .binary => |*bin| {
-      try self.resolveExpression(bin.left, scope, add_diags);
-      try self.resolveExpression(bin.right, scope, add_diags);
-    },
-    .call => |*call| try self.resolveCallExpression(call, scope, add_diags),
-    .group => |*grp| try self.resolveExpression(grp.child, scope, add_diags),
-  }
-}
-
-/// Resolves the identifier in an identifier node.
-///
-pub fn resolveIdentifier(
-  self: *IdentifierResolver,
-  id_expr: *ast.IdentifierNode,
-  scope: *IdentifierStorage.Scope,
-  add_diags: bool,
-) Error!void {
-  if( id_expr.isSegmented() ) {
+  if( id_node.isSegmented() )
     @panic("NYI");
+
+  var scope = self.scopes.items[self.scopes.items.len - 1];
+
+  if( scope.getBinding(id_node.parts[0]) ) |id| {
+    const entry = self.identifiers.getEntry(id).?;
+
+    if( entry.is_being_defined ) {
+      try self.diagnostics.pushError(
+        "Invalid recursive use of '{s}'.", .{ id_node.parts[0] },
+        id_node.getStartLocation(), id_node.getEndLocation()
+      );
+
+      try self.diagnostics.pushNote(
+        "Recursive declaration of this:", .{}, false,
+        entry.start_location, entry.end_location
+      );
+
+      self.errors += 1;
+
+    } else {
+
+      id_node.identifier_id = id;
+    }
 
   } else {
 
-    if( !id_expr.id_resolver_md.resolved ) {
+    try self.diagnostics.pushError(
+      "Usage of undeclared identifier '{s}'.", .{ id_node.parts[0] },
+      id_node.getStartLocation(), id_node.getEndLocation()
+    );
 
-      if( scope.getBinding(id_expr.parts[0]) ) |id| {
-        const entry = self.identifiers.getEntry(id).?;
-
-        if( entry.is_being_defined ) {
-          if( add_diags ) {
-            try self.diagnostics.pushError(
-              "Invalid recursive use of '{s}'.",
-              .{ id_expr.parts[0] },
-              id_expr.getStartLocation(),
-              id_expr.getEndLocation(),
-            );
-
-            try self.diagnostics.pushNote(
-              "Recursive declaration of this:",
-              .{}, false,
-              entry.start_location, 
-              entry.end_location
-            );
-          }
-
-          if( !id_expr.id_resolver_md.errored ) {
-            id_expr.id_resolver_md.errored = true;
-            self.errors += 1;
-          }
-
-        } else {
-
-          id_expr.identifier_id = id;
-          id_expr.id_resolver_md.resolved = true;
-
-          self.resolved += 1;
-
-          if( id_expr.id_resolver_md.unresolved ) {
-            id_expr.id_resolver_md.unresolved = false;
-            self.unresolved -= 1;
-          }
-        }
-
-      } else {
-
-        if( add_diags ) {
-          try self.diagnostics.pushError(
-            "Usage of undeclared identifier '{s}'.",
-            .{ id_expr.parts[0] },
-            id_expr.getStartLocation(),
-            id_expr.getEndLocation(),
-          );
-        }
-
-        if( !id_expr.id_resolver_md.unresolved ) {
-          id_expr.id_resolver_md.unresolved = true;
-          self.unresolved += 1;
-        }
-
-      }
-    }
+    self.errors += 1;
   }
 }
 
-/// Resolves the identifiers in a function call expression node.
-///
-pub fn resolveCallExpression(
-  self: *IdentifierResolver,
-  call: *ast.CallExpressionNode,
-  scope: *IdentifierStorage.Scope,
-  add_diags: bool,
-) Error!void {
-  try self.resolveExpression(call.function, scope, add_diags);
 
-  for( call.arguments ) |*argument| {
-    try self.resolveExpression(argument, scope, add_diags);
-  }
-}
+
+const TraverserFns = trv.TraverserFns(*IdentifierResolver, Error, true);
 
 
 
