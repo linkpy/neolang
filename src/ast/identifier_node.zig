@@ -103,6 +103,8 @@ pub fn isSegmented(
 
 
 
+/// Formats the identifier.
+///
 pub fn format(
   self: IdentifierNode,
   comptime fmt: []const u8,

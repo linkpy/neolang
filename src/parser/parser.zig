@@ -89,13 +89,13 @@ pub fn parseFile(
 
 // == Statements == //
 
-// TODO handle documentation for documentable nodes.
 
 /// Parses a statement.
 ///
 pub fn parseStatement(
   self: *Parser
 ) Error!ast.StatementNode {
+  // TODO handle documentation for documentable nodes.
   try self.parseStatementFlags();
   try self.skipWhitespace();
 
@@ -197,6 +197,10 @@ pub fn parseConstant(
   };
 }
 
+/// Parses a function declaration.
+///
+/// Supports fast-forwarding in case of error.
+///
 pub fn parseFunction(
   self: *Parser
 ) Error!ast.FunctionNode {
@@ -239,6 +243,7 @@ pub fn parseFunction(
     return error.unexpected_segmented_identifier;
   }
 
+  // TODO put signature parsing in its own function
   while( true ) {
     const token = try self.peekTokenNoEOF("a function signature");
 
@@ -325,6 +330,7 @@ pub fn parseFunction(
 
   var end_loc: Location = undefined;
 
+  // TODO put block parsing into its own function
   while( true ) {
     try self.skipWhitespace();
 

@@ -6,6 +6,8 @@ const ast = nl.ast;
 
 
 
+/// Traverses a statement node using the given functions and traverser.
+///
 pub fn traverseStatement(
   fns: anytype,
   traverser: @TypeOf(fns).Traverser,
@@ -23,6 +25,9 @@ pub fn traverseStatement(
     try f(traverser, stmt);
 }
 
+/// Traverses a constant declaration node using the given functions and
+/// traverser.
+///
 pub fn traverseConstant(
   fns: anytype,
   traverser: @TypeOf(fns).Traverser,
@@ -47,6 +52,8 @@ pub fn traverseConstant(
 
 
 
+/// Traverses an expression node using the given functions and traverser.
+///
 pub fn traverseExpression(
   fns: anytype,
   traverser: @TypeOf(fns).Traverser,
@@ -82,6 +89,8 @@ pub fn traverseExpression(
     try f(traverser, expr);
 }
 
+/// Traverses a binary expression node using the given functions and traverser.
+///
 pub fn traverseBinaryExpression(
   fns: anytype,
   traverser: @TypeOf(fns).Traverser,
@@ -97,6 +106,8 @@ pub fn traverseBinaryExpression(
     try f(traverser, bin);
 }
 
+/// Traverses a unary expression node using the given functions and traverser.
+///
 pub fn traverseUnaryExpression(
   fns: anytype,
   traverser: @TypeOf(fns).Traverser,
@@ -111,6 +122,8 @@ pub fn traverseUnaryExpression(
     try f(traverser, una);
 }
 
+/// Traverses a call expression node.
+///
 pub fn traverseCallExpression(
   fns: anytype,
   traverser: @TypeOf(fns).Traverser,
@@ -129,6 +142,8 @@ pub fn traverseCallExpression(
     try f(traverser, call);
 }
 
+/// Traverses a group expression.
+///
 pub fn traverseGroupExpression(
   fns: anytype,
   traverser: @TypeOf(fns).Traverser,
@@ -145,6 +160,8 @@ pub fn traverseGroupExpression(
 
 
 
+/// Structure containing all of the optional traversal functions.
+///
 pub fn TraverserFns(
   comptime T: type,
   comptime E: type,

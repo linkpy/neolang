@@ -49,6 +49,8 @@ pub fn printConstantNode(
   try printExpressionNode(writer, &cst.value, indent+2, show_metadata);
 }
 
+/// Prints the AST of the given function node.
+///
 pub fn printFunctionNode(
   writer: anytype,
   fun: *const ast.FunctionNode,
