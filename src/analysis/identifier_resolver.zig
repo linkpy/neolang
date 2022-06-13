@@ -38,6 +38,18 @@ pub fn init(
 
 
 
+/// Resolves the identifiers in a statement node.
+///
+pub fn resolveStatement(
+  self: *IdentifierResolver,
+  stmt: *ast.StatementNode,
+  scope: *IdentifierStorage.Scope
+) Error!void {
+  switch( stmt.* ) {
+    .constant => |*cst| try self.resolveConstant(cst, scope),
+  }
+}
+
 /// Resolves the identifiers in a constant declaration.
 ///
 pub fn resolveConstant(

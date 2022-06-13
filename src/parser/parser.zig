@@ -55,30 +55,27 @@ pub fn init(
 
 
 
-
-
-
-
-
-
 // == Statements == //
 
 // TODO handle documentation for documentable nodes.
 
-
-
+/// Parses a statement.
+///
 pub fn parseStatement(
   self: *Parser
-) Error!ast.ConstantNode {
+) Error!ast.StatementNode {
   try self.parseStatementFlags();
   
-  var stmt = try self.parseConstant(); // TODO use switch
+  var stmt = ast.StatementNode { .constant = try self.parseConstant() }; // TODO use switch
   errdefer stmt.deinit(self.alloc);
 
-  if( stmt.flags.show_tokens )
+  stmt.setStatementFlags(self.next_statement_flags);
+  self.next_statement_flags = .{};
+
+  if( stmt.getStatementFlags().show_tokens )
     try self.printStatementTokens(&stmt);
 
-  if( stmt.flags.show_ast ) {
+  if( stmt.getStatementFlags().show_ast ) {
     std.log.debug("Printing the statement's AST:", .{});
     ast.printer.printStatementNode( 
       std.io.getStdOut().writer(), &stmt, 0, false 
@@ -87,8 +84,6 @@ pub fn parseStatement(
 
   return stmt;
 }
-
-
 
 /// Parses a constant declaration.
 ///
@@ -145,16 +140,12 @@ pub fn parseConstant(
 
   const semicolon_token = try self.expectToken(.semicolon);
 
-  const stmt_flags = self.next_statement_flags;
-  self.next_statement_flags = .{};
-
   return ast.ConstantNode {
     .name = id_node,
     .type = type_expr,
     .value = value_node,
     .start_location = const_token.start_location,
     .end_location = semicolon_token.end_location,
-    .flags = stmt_flags,
   };
 }
 
@@ -682,7 +673,7 @@ fn updateNextStatementFlags(
 
 fn printStatementTokens(
   self: *Parser,
-  stmt: *const ast.ConstantNode // TODO use statement union
+  stmt: *const ast.StatementNode // TODO use statement union
 ) Error!void {
   var lexer = self.lexer.*;
   lexer.reader.location = stmt.getStartLocation();

@@ -11,14 +11,14 @@ const ast = nl.ast;
 ///
 pub fn printStatementNode(
   writer: anytype,
-  stmt: *const ast.ConstantNode, // TODO use statement union,
+  stmt: *const ast.StatementNode,
   indent: usize,
   show_metadata: bool
 ) !void {
-  try printConstantNode(writer, stmt, indent, show_metadata);
+  switch( stmt.* ) {
+    .constant => |*cst| try printConstantNode(writer, cst, indent, show_metadata),
+  }
 }
-
-
 
 /// Prints the AST of the given constant node.
 ///

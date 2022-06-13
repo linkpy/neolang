@@ -46,8 +46,8 @@ pub fn main() anyerror!void {
   var parser = Parser.init(alloc, &lexer);
 
 
-  var cst0 = try parser.parseStatement();
-  defer cst0.deinit(alloc);
+  var stmt0 = try parser.parseStatement();
+  defer stmt0.deinit(alloc);
 
   // var cst1 = try parser.parseConstant();
   // defer cst1.deinit(alloc);
@@ -62,23 +62,18 @@ pub fn main() anyerror!void {
   try scope.bindBuiltins();
 
 
-  try id_resolver.resolveConstant(&cst0, &scope);
+  try id_resolver.resolveStatement(&stmt0, &scope);
   // try id_resolver.resolveConstant(&cst1, &scope);
   // try id_resolver.resolveConstant(&cst2, &scope);
 
 
   var type_resolver = TypeResolver.init(&diags, &id_storage);
-  try type_resolver.resolveConstant(&cst0);
+  try type_resolver.resolveStatement(&stmt0);
   // try type_resolver.resolveConstant(&cst1);
   // try type_resolver.resolveConstant(&cst2);
 
-  var eval = Evaluator.init(alloc, &diags, &id_storage);
-  var result = try eval.evaluateExpression(&cst0.value, null);
-
   try nl.ast.printer.printStatementNode(
-    std.io.getStdOut().writer(), &cst0, 0, true
+    std.io.getStdOut().writer(), &stmt0, 0, true
   );
-
-  std.log.info("Result: {}", .{ result });
 }
 

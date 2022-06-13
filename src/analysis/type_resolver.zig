@@ -40,6 +40,17 @@ pub fn init(
 
 
 
+/// Resolves the types in a statement node.
+///
+pub fn resolveStatement(
+  self: *TypeResolver,
+  stmt: *ast.StatementNode
+) Error!void {
+  switch( stmt.* ) {
+    .constant => |*cst| try self.resolveConstant(cst),
+  }
+}
+
 /// Resolves the type of a constant declaration node.
 ///
 pub fn resolveConstant(
@@ -84,6 +95,8 @@ pub fn resolveConstant(
     }
   }
 }
+
+
 
 /// Resolves the types of an expression node.
 ///
