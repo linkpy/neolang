@@ -59,6 +59,8 @@ pub fn init(
 
 
 
+/// Parses the file until its end.
+///
 pub fn parseFile(
   self: *Parser
 ) Error![]ast.StatementNode {
@@ -73,7 +75,7 @@ pub fn parseFile(
   while( !self.isAtEnd() ) {
     var stmt = try self.parseStatement();
     errdefer stmt.deinit(self.alloc);
-    
+
     try self.skipWhitespace();
     
     try list.append(stmt);

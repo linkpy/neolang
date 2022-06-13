@@ -52,19 +52,24 @@ pub fn main() anyerror!void {
     alloc.free(stmts);
   }
 
-  // var id_resolver = IdResolver.init(&diags, &id_storage);
-  // var scope = id_storage.scope();
-  // defer scope.deinit();
 
-  // try scope.bindBuiltins();
+  var id_resolver = IdResolver.init(
+    &diags,
+    &id_storage
+  );
 
-  // try id_resolver.resolveStatement(&stmt0, &scope);
+  if( id_resolver.resolveFile(stmts) ) |v| {
+    std.log.info("Indentifier resolution: {}", .{ v  });
+  } else |err| {
+    std.log.info("Error occured: {}", .{ err });
+  }
 
-  // var type_resolver = TypeResolver.init(&diags, &id_storage);
-  // try type_resolver.resolveStatement(&stmt0);
-
-  // try nl.ast.printer.printStatementNode(
-  //   std.io.getStdOut().writer(), &stmt0, 0, true
-  // );
+  for( stmts ) |stmt| {
+    try nl.ast.printer.printStatementNode(
+      std.io.getStdOut().writer(),
+      &stmt,
+      0,
+      true
+    );
+  }
 }
-

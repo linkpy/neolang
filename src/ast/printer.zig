@@ -91,7 +91,10 @@ pub fn printIdentifierNode(
 
   if( show_metadata ) {
     try printWithIndent(writer, indent, "- Metadata:\n", .{});
-    try printWithIndent(writer, indent+2, "- ID: {}\n", .{ id.identifier_id });
+    try printWithIndent(writer, indent+2, "- ID: {} (resolved? {} | unresolved? {} | errored? {})\n", .{
+      id.identifier_id,
+      id.id_resolver_md.resolved, id.id_resolver_md.unresolved, id.id_resolver_md.errored
+    });
     try printWithIndent(writer, indent+2, "- Constantness: {s}\n", .{ @tagName( id.constantness ) });
     try printWithIndent(writer, indent+2, "- Type: {}\n", .{ id.type });
   }

@@ -36,6 +36,9 @@ constantness: flags.ConstantExpressionFlag = .unknown,
 /// Cached type of the identifier.
 type: ?Type = null,
 
+/// Metadata for the ID resolver.
+id_resolver_md: flags.IdentifierResolverMetadata = .{},
+
 
 
 /// Deinitializes the node.

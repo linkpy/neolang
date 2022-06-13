@@ -6,7 +6,7 @@
 pub const ConstantExpressionFlag = enum {
   /// The expression is constant.
   constant,
-  /// The constantness of the expression is not known and requires further 
+  /// The constantness of the expression is not known and requires further
   /// processing.
   unknown,
   /// The expression isn't constant.
@@ -22,7 +22,7 @@ pub const ConstantExpressionFlag = enum {
   ) ConstantExpressionFlag {
     return @intToEnum(ConstantExpressionFlag,
       @maximum(
-        @enumToInt(self), 
+        @enumToInt(self),
         @enumToInt(other)
       )
     );
@@ -32,10 +32,20 @@ pub const ConstantExpressionFlag = enum {
 
 
 /// Optional flags associated with each statement.
-/// 
+///
 pub const StatementFlags = struct {
   /// Show the token list making the statement.
   show_tokens: bool = false,
   /// Show the AST making the statement.
   show_ast: bool = false,
+};
+
+
+
+/// Metadata used by the IdentifierResolver.
+///
+pub const IdentifierResolverMetadata = struct {
+  resolved: bool = false,
+  unresolved: bool = false,
+  errored: bool = false,
 };
