@@ -39,13 +39,3 @@ pub const StatementFlags = struct {
   /// Show the AST making the statement.
   show_ast: bool = false,
 };
-
-
-
-/// Metadata used by the IdentifierResolver.
-///
-pub const IdentifierResolverMetadata = struct {
-  resolved: bool = false,
-  unresolved: bool = false,
-  errored: bool = false,
-};

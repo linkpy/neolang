@@ -17,6 +17,7 @@ pub fn printStatementNode(
 ) !void {
   switch( stmt.* ) {
     .constant => |*cst| try printConstantNode(writer, cst, indent, show_metadata),
+    .function => |*fun| try printFunctionNode(writer, fun, indent, show_metadata),
   }
 }
 
@@ -46,7 +47,56 @@ pub fn printConstantNode(
 
   try printWithIndent(writer, indent, "- Value:\n", .{});
   try printExpressionNode(writer, &cst.value, indent+2, show_metadata);
+}
 
+pub fn printFunctionNode(
+  writer: anytype,
+  fun: *const ast.FunctionNode,
+  indent: usize,
+  show_metadata: bool
+) @TypeOf(writer).Error!void {
+  try printWithIndent(writer, indent, "+ FunctionNode\n", .{});
+
+  if( show_metadata ) {
+    try printWithIndent(writer, indent, "- Metadata:\n", .{});
+    try printWithIndent(writer, indent+2, "- Recursive? {}\n", .{ fun.metadata.is_recursive });
+    try printWithIndent(writer, indent+2, "- Entry point? {}\n", .{ fun.metadata.is_entry_point });
+  }
+
+  try printWithIndent(writer, indent, "- Name:\n", .{});
+  try printIdentifierNode(writer, &fun.name, indent+2, show_metadata);
+
+  if( fun.return_type ) |*expr| {
+    try printWithIndent(writer, indent, "- Return type:\n", .{});
+    try printExpressionNode(writer, expr, indent+2, show_metadata);
+  } else {
+    try printWithIndent(writer, indent, "- Return type: <inferred>\n", .{});
+  }
+
+  if( fun.arguments.len == 0 ) {
+    try printWithIndent(writer, indent, "- Arguments: <none>\n", .{});
+  } else {
+    try printWithIndent(writer, indent, "- Arguments:\n", .{});
+
+    for( fun.arguments ) |*arg| {
+      // TODO write a printArgumentNode
+      try printWithIndent(writer, indent+2, "+ ArgumentNode\n", .{});
+      try printWithIndent(writer, indent+2, "- Name:\n", .{});
+      try printIdentifierNode(writer, &arg.name, indent+4, show_metadata);
+      try printWithIndent(writer, indent+2, "- Type:\n", .{});
+      try printExpressionNode(writer, &arg.type, indent+4, show_metadata);
+    }
+  }
+
+  if( fun.body.len == 0 ) {
+    try printWithIndent(writer, indent, "- Body: <empty>\n", .{});
+  } else {
+    try printWithIndent(writer, indent, "- Body:\n", .{});
+
+    for( fun.body ) |*stmt| {
+      try printStatementNode(writer, stmt, indent+2, show_metadata);
+    }
+  }
 }
 
 
@@ -91,10 +141,7 @@ pub fn printIdentifierNode(
 
   if( show_metadata ) {
     try printWithIndent(writer, indent, "- Metadata:\n", .{});
-    try printWithIndent(writer, indent+2, "- ID: {} (resolved? {} | unresolved? {} | errored? {})\n", .{
-      id.identifier_id,
-      id.id_resolver_md.resolved, id.id_resolver_md.unresolved, id.id_resolver_md.errored
-    });
+    try printWithIndent(writer, indent+2, "- ID: {}\n", .{ id.identifier_id });
     try printWithIndent(writer, indent+2, "- Constantness: {s}\n", .{ @tagName( id.constantness ) });
     try printWithIndent(writer, indent+2, "- Type: {}\n", .{ id.type });
   }

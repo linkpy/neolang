@@ -16,6 +16,7 @@ pub fn traverseStatement(
 
   switch( stmt.* ) {
     .constant => |*cst| try traverseConstant(fns, traverser, cst),
+    .function => @panic("NYI"),
   }
 
   if( fns.exitStatement ) |f|

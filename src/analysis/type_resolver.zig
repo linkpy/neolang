@@ -8,6 +8,7 @@ const std = @import("std");
 
 const nl = @import("../nl.zig");
 const ast = nl.ast;
+const trv = nl.ast.traverser;
 const Diagnostics = nl.diagnostic.Diagnostics;
 const IdentifierStorage = nl.storage.Identifier;
 const Type = nl.types.Type;
@@ -20,8 +21,11 @@ const TypeResolver = @This();
 diagnostics: *Diagnostics,
 /// Registered identifiers.
 identifiers: *IdentifierStorage,
+
 /// Number of error that occured during resolving.
-errors: usize, 
+errors: usize,
+
+debug: bool = false,
 
 
 
@@ -233,4 +237,72 @@ pub fn resolveBinaryExpression(
 
 
 
-pub const Error = IdentifierStorage.BindingError || Diagnostics.Error;
+const resolveFns: TraverserFns = .{
+  .visitIdentifierUsage = resolveIdentifierUsage,
+  .exitUnaryExpression = resolveExitUnaryExpression,
+};
+
+fn resolveIdentifierUsage(
+  self: *TypeResolver,
+  id_node: *ast.IdentifierNode
+) Error!void {
+  const id = id_node.identifier_id orelse {
+    if( self.debug )
+      try self.diagnostics.pushVerbose(
+        "[DBG] Identifier '{}' has no ID.",
+        .{ id_node }, false,
+        id_node.getStartLocation(), id_node.getEndLocation()
+      );
+
+
+    return;
+  };
+  const entry = self.identifiers.getEntry(id).?;
+  const data = switch( entry.data ) {
+    .expression => |dat| dat,
+    else => {
+      if( self.debug )
+        try self.diagnostics.pushVerbose(
+          "[DBG] Identifier '{}' has an ID but no expression data.",
+          .{ id_node }, false,
+          id_node.getStartLocation(), id_node.getEndLocation()
+      );
+
+      return;
+    },
+  };
+
+  id_node.constantness = data.constantness;
+  id_node.type = data.type;
+}
+
+fn resolveExitUnaryExpression(
+  self: *TypeResolver,
+  una_node: *ast.UnaryExpressionNode
+) Error!void {
+  una_node.constantness = una_node.child.getConstantness();
+
+  const child_type = una_node.child.getType() orelse return;
+
+  if( child_type.getUnaryOperationResultType(una_node.operator) ) |typ| {
+    una_node.type = typ;
+  } else {
+    try self.diagnostics.pushError(
+      "'{}' doesn't support the '{s}' unary operation.",
+      .{ child_type, @tagName(una_node.operator) },
+      una_node.getStartLocation(), una_node.getEndLocation()
+    );
+
+    self.errors += 1;
+  }
+}
+
+
+
+const TraverserFns = trv.TraverserFns(*TypeResolver, Error, true);
+
+
+
+pub const Error = error {
+  invalid_ast_state,
+} || IdentifierStorage.BindingError || Diagnostics.Error;

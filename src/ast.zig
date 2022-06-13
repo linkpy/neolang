@@ -2,6 +2,7 @@
 // statements
 pub const StatementNode = @import("./ast/statement_node.zig").StatementNode;
 pub const ConstantNode = @import("./ast/constant_node.zig");
+pub const FunctionNode = @import("./ast/function_node.zig");
 
 // expressions
 pub const ExpressionNode = @import("./ast/expression_node.zig").ExpressionNode;

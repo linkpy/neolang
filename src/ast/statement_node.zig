@@ -7,6 +7,7 @@ const flags = nl.ast.flags;
 const Location = nl.diagnostic.Location;
 const Type = nl.types.Type;
 const ConstantNode = nl.ast.ConstantNode;
+const FunctionNode = nl.ast.FunctionNode;
 
 
 
@@ -14,6 +15,7 @@ const ConstantNode = nl.ast.ConstantNode;
 ///
 pub const StatementNode = union(enum) {
   constant: ConstantNode,
+  function: FunctionNode,
 
 
 
@@ -25,6 +27,7 @@ pub const StatementNode = union(enum) {
   ) void {
     switch( self.* ) {
       .constant => |*cst| cst.deinit(alloc),
+      .function => |*fun| fun.deinit(alloc),
     }
   }
 
@@ -37,6 +40,7 @@ pub const StatementNode = union(enum) {
   ) Location {
     return switch( self ) {
       .constant => |cst| cst.getStartLocation(),
+      .function => |fun| fun.getStartLocation(),
     };
   }
 
@@ -47,6 +51,7 @@ pub const StatementNode = union(enum) {
   ) Location {
     return switch( self ) {
       .constant => |cst| cst.getEndLocation(),
+      .function => |fun| fun.getEndLocation(),
     };
   }
 
@@ -59,6 +64,7 @@ pub const StatementNode = union(enum) {
   ) ?[]const u8 {
     return switch( self ) {
       .constant => |cst| cst.documentation,
+      .function => |fun| fun.documentation,
     };
   }
 
@@ -69,7 +75,8 @@ pub const StatementNode = union(enum) {
     doc: ?[]const u8
   ) void {
     switch( self.* ) {
-      .constant => |cst| cst.documentation = doc,
+      .constant => |*cst| cst.documentation = doc,
+      .function => |*fun| fun.documentation = doc,
     }
   }
 
@@ -80,6 +87,7 @@ pub const StatementNode = union(enum) {
   ) flags.StatementFlags {
     return switch( self ) {
       .constant => |cst| cst.flags,
+      .function => |fun| fun.statement_flags,
     };
   }
 
@@ -91,6 +99,7 @@ pub const StatementNode = union(enum) {
   ) void {
     switch( self.* ) {
       .constant => |*cst| cst.flags = flag,
+      .function => |*fun| fun.statement_flags = flag,
     }
   }
 

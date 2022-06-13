@@ -12,7 +12,6 @@ const Lexer = nl.parser.Lexer;
 const Parser = nl.parser.Parser;
 
 const IdResolver = nl.analysis.IdentifierResolver;
-const TypeResolver = nl.analysis.TypeResolver;
 
 const Evaluator = nl.vm.Evaluator;
 
@@ -53,23 +52,23 @@ pub fn main() anyerror!void {
   }
 
 
-  var id_resolver = IdResolver.init(
-    alloc, &diags, &id_storage
-  );
-  defer id_resolver.deinit();
+  // var id_resolver = IdResolver.init(
+  //   alloc, &diags, &id_storage
+  // );
+  // defer id_resolver.deinit();
 
-  if( id_resolver.processFile(stmts) ) |v| {
-    std.log.info("Indentifier resolution: {} (errors: {})", .{ v, id_resolver.errors });
-  } else |err| {
-    std.log.info("Error occured: {}", .{ err });
-  }
+  // if( id_resolver.processFile(stmts) ) |v| {
+  //   std.log.info("Indentifier resolution: {} (errors: {})", .{ v, id_resolver.errors });
+  // } else |err| {
+  //   std.log.info("Error occured: {}", .{ err });
+  // }
 
   for( stmts ) |stmt| {
     try nl.ast.printer.printStatementNode(
       std.io.getStdOut().writer(),
       &stmt,
       0,
-      true
+     false
     );
   }
 

@@ -36,9 +36,6 @@ constantness: flags.ConstantExpressionFlag = .unknown,
 /// Cached type of the identifier.
 type: ?Type = null,
 
-/// Metadata for the ID resolver.
-id_resolver_md: flags.IdentifierResolverMetadata = .{},
-
 
 
 /// Deinitializes the node.
@@ -102,4 +99,23 @@ pub fn isSegmented(
   self: IdentifierNode
 ) bool {
   return self.parts.len > 1;
+}
+
+
+
+pub fn format(
+  self: IdentifierNode,
+  comptime fmt: []const u8,
+  options: std.fmt.FormatOptions,
+  writer: anytype
+) @TypeOf(writer).Error!void {
+  _ = fmt;
+  _ = options;
+  for( self.parts ) |part, i| {
+    try writer.writeAll(part);
+
+    if( i != self.parts.len - 1 ) {
+      try writer.writeByte('/');
+    }
+  }
 }

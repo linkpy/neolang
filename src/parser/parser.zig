@@ -11,6 +11,7 @@ const Lexer = nl.parser.Lexer;
 const FileStorage = nl.storage.File;
 const Diagnostics = nl.diagnostic.Diagnostics;
 const Location = nl.diagnostic.Location;
+const Type = nl.types.Type;
 
 const FileID = FileStorage.FileID;
 const Token = Lexer.Token;
@@ -96,8 +97,24 @@ pub fn parseStatement(
   self: *Parser
 ) Error!ast.StatementNode {
   try self.parseStatementFlags();
-  
-  var stmt = ast.StatementNode { .constant = try self.parseConstant() }; // TODO use switch
+  try self.skipWhitespace();
+
+  const token = try self.peekTokenNoEOF("a statement");
+
+  var stmt = switch( token.kind ) {
+    .kw_const => ast.StatementNode{ .constant = try self.parseConstant() },
+    .kw_proc => ast.StatementNode{ .function = try self.parseFunction() },
+    else => {
+      try self.diagnostics.pushError(
+        "Expected a statement, but got a '{s}' instead.",
+        .{ @tagName(token.kind) },
+        token.start_location, token.end_location,
+      );
+
+      return error.unexpected_token;
+    }
+  };
+
   errdefer stmt.deinit(self.alloc);
 
   stmt.setStatementFlags(self.next_statement_flags);
@@ -177,6 +194,161 @@ pub fn parseConstant(
     .value = value_node,
     .start_location = const_token.start_location,
     .end_location = semicolon_token.end_location,
+  };
+}
+
+pub fn parseFunction(
+  self: *Parser
+) Error!ast.FunctionNode {
+  try self.skipWhitespace();
+
+  const proc_token = try self.expectToken(.kw_proc);
+
+  errdefer self.skipTokensUntil(.kw_end) catch {};
+
+  try self.skipWhitespace();
+
+  var name = try self.parseIdentifier();
+  var metadata = ast.FunctionNode.Metadata {};
+  var arguments = std.ArrayList(ast.FunctionNode.ArgumentNode).init(self.alloc);
+  var return_type: ?ast.ExpressionNode = null;
+  var content = std.ArrayList(ast.StatementNode).init(self.alloc);
+
+  var signature_end_loc: Location = undefined;
+
+  errdefer {
+    name.deinit(self.alloc);
+
+    for( arguments.items ) |*arg| arg.deinit(self.alloc);
+    arguments.deinit();
+
+    if( return_type ) |*expr| expr.deinit(self.alloc);
+
+    for( content.items ) |*stmt| stmt.deinit(self.alloc);
+    content.deinit();
+  }
+
+  try self.skipWhitespace();
+
+  if( name.isSegmented() ) {
+    try self.diagnostics.pushError(
+      "Segmented identifiers aren't allowed as function names.", .{},
+      name.getStartLocation(), name.getEndLocation()
+    );
+
+    return error.unexpected_segmented_identifier;
+  }
+
+  while( true ) {
+    const token = try self.peekTokenNoEOF("a function signature");
+
+    switch( token.kind ) {
+      .kw_is => {
+        self.nextToken();
+        try self.skipWhitespace();
+
+        const flag = try self.peekTokenNoEOF("a function flag");
+
+        switch( flag.kind ) {
+          .kw_recursive =>
+            metadata.is_recursive = true,
+          .kw_entry_point =>
+            metadata.is_entry_point = true,
+          else => {
+            try self.diagnostics.pushError(
+              "Expected a function flag, but got a '{s}' instead.",
+              .{ @tagName(flag.kind) },
+              flag.start_location, flag.end_location
+            );
+
+            return Error.unexpected_token;
+          }
+        }
+
+        signature_end_loc = flag.end_location;
+        self.nextToken();
+      },
+      .kw_param => {
+        self.nextToken();
+        try self.skipWhitespace();
+
+        var id = try self.parseIdentifier();
+        errdefer id.deinit(self.alloc);
+
+        if( id.isSegmented() ) {
+          try self.diagnostics.pushError(
+            "Segmented identifiers aren't allowed as argument names.", .{},
+            id.getStartLocation(), id.getEndLocation(),
+          );
+
+          return Error.unexpected_segmented_identifier;
+        }
+
+        try self.skipWhitespace();
+
+        var arg_type = try self.parseExpressionAtom();
+        errdefer arg_type.deinit(self.alloc);
+
+        try arguments.append(.{
+          .name = id,
+          .type = arg_type
+        });
+
+        signature_end_loc = arg_type.getEndLocation();
+      },
+      .kw_returns => {
+        self.nextToken();
+        try self.skipWhitespace();
+
+        var expr = try self.parseExpressionAtom();
+        return_type = expr;
+
+        signature_end_loc = expr.getEndLocation();
+      },
+      .kw_begin => {
+        self.nextToken();
+        break;
+      },
+      else => {
+        try self.diagnostics.pushError(
+          "Unexpected '{s}' token in function signature.",
+          .{ @tagName(token.kind) },
+          token.start_location, token.end_location
+        );
+
+        return Error.unexpected_token;
+      }
+    }
+
+    try self.skipWhitespace();
+  }
+
+  var end_loc: Location = undefined;
+
+  while( true ) {
+    try self.skipWhitespace();
+
+    const token = try self.peekTokenNoEOF("a statement");
+
+    if( token.kind == .kw_end ) {
+      end_loc = token.end_location;
+      self.nextToken();
+      break;
+    }
+
+    var stmt = try self.parseStatement();
+    try content.append(stmt);
+  }
+
+  return ast.FunctionNode {
+    .name = name,
+    .arguments = arguments.toOwnedSlice(),
+    .return_type = return_type,
+    .body = content.toOwnedSlice(),
+    .metadata = metadata,
+    .start_location = proc_token.start_location,
+    .end_location = end_loc,
+    .signature_end_location = signature_end_loc
   };
 }
 
@@ -884,9 +1056,6 @@ fn skipTokensUntil(
 
       self.nextToken();
 
-      if( token.kind == kind and par_count == 0 and sqr_count == 0 and blk_count == 0 )
-        break;
-      
       switch( token.kind ) {
         .left_par => par_count += 1,
         .right_par => par_count -|= 1,
@@ -896,6 +1065,9 @@ fn skipTokensUntil(
         .kw_end => blk_count -|= 1,
         else => {}
       }
+
+      if( token.kind == kind and par_count == 0 and sqr_count == 0 and blk_count == 0 )
+        break;
     } else |err| {
       if( err != error.unrecognized_input )
         return err;
