@@ -72,7 +72,7 @@ pub fn printFunctionNode(
     try printWithIndent(writer, indent, "- Return type:\n", .{});
     try printExpressionNode(writer, expr, indent+2, show_metadata);
   } else {
-    try printWithIndent(writer, indent, "- Return type: <inferred>\n", .{});
+    try printWithIndent(writer, indent, "- Return type: <none>\n", .{});
   }
 
   if( fun.arguments.len == 0 ) {
@@ -119,6 +119,7 @@ pub fn printExpressionNode(
     .unary => |*una| try printUnaryExpressionNode(writer, una, indent, show_metadata),
     .call => |*call| try printCallExpressionNode(writer, call, indent, show_metadata),
     .group => |*grp| try printGroupExpressionNode(writer, grp, indent, show_metadata),
+    .field => |*fa| try printFieldAccessNode(writer, fa, indent, show_metadata),
   }
 }
 
@@ -130,16 +131,7 @@ pub fn printIdentifierNode(
   indent: usize,
   show_metadata: bool
 ) @TypeOf(writer).Error!void {
-  try printWithIndent(writer, indent, "+ IdentifierNode: ", .{});
-
-  for( id.parts ) |part, i| {
-    try writer.writeAll(part);
-    
-    if( i != id.parts.len - 1 )
-      try writer.writeByte('/');
-  }
-
-  try writer.writeByte('\n');
+  try printWithIndent(writer, indent, "+ IdentifierNode: {s}\n", .{ id.name });
 
   if( show_metadata ) {
     try printWithIndent(writer, indent, "- Metadata:\n", .{});
@@ -157,9 +149,9 @@ pub fn printIntegerNode(
   indent: usize,
   show_metadata: bool
 ) @TypeOf(writer).Error!void {
-  try printWithIndent(writer, indent, "+ IntegerNode\n", .{});
-  try printWithIndent(writer, indent, "- Value: {}\n", .{ int.value });
-  try printWithIndent(writer, indent, "- Type flag: {s}\n", .{ @tagName(int.type_flag) });
+  try printWithIndent(writer, indent, "+ IntegerNode: {} ({s})\n", .{
+    int.value, @tagName(int.type_flag)
+  });
 
   if( show_metadata ) {
     try printWithIndent(writer, indent, "- Metadata: <no metadata to show>\n", .{});
@@ -269,6 +261,29 @@ pub fn printGroupExpressionNode(
 
   try printWithIndent(writer, indent, "- Child:\n", .{});
   try printExpressionNode(writer, grp.child, indent+2, show_metadata);
+}
+
+/// Prints the AST of the given field access node.
+///
+pub fn printFieldAccessNode(
+  writer: anytype,
+  fa: *const ast.FieldAccessNode,
+  indent: usize,
+  show_metadata: bool
+) @TypeOf(writer).Error!void {
+  try printWithIndent(writer, indent, "+ FieldAccessNode\n", .{});
+
+  if( show_metadata ) {
+    try printWithIndent(writer, indent, "- Metadata:\n", .{});
+    try printWithIndent(writer, indent+2, "- Constantness: {s}\n", .{ @tagName(fa.getConstantness()) });
+    try printWithIndent(writer, indent+2, "- Type: {}\n", .{ fa.getType() });
+  }
+
+  try printWithIndent(writer, indent, "- Storage:\n", .{});
+  try printExpressionNode(writer, fa.storage, indent+2, show_metadata);
+
+  try printWithIndent(writer, indent, "- Field:\n", .{});
+  try printIdentifierNode(writer, &fa.field, indent+2, show_metadata);
 }
 
 

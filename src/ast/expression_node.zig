@@ -13,6 +13,7 @@ const BinaryExpressionNode = nl.ast.BinaryExpressionNode;
 const UnaryExpressionNode = nl.ast.UnaryExpressionNode;
 const CallExpressionNode = nl.ast.CallExpressionNode;
 const GroupExpressionNode = nl.ast.GroupExpressionNode;
+const FieldAccessNode = nl.ast.FieldAccessNode;
 
 
 
@@ -26,6 +27,7 @@ pub const ExpressionNode = union(enum) {
   unary: UnaryExpressionNode,
   call: CallExpressionNode,
   group: GroupExpressionNode,
+  field: FieldAccessNode,
 
 
 
@@ -47,6 +49,7 @@ pub const ExpressionNode = union(enum) {
       .unary => |*un| un.deinit(alloc),
       .call => |*call| call.deinit(alloc),
       .group => |*grp| grp.deinit(alloc),
+      .field => |*fa| fa.deinit(alloc),
     }
   }
 
@@ -64,6 +67,7 @@ pub const ExpressionNode = union(enum) {
       .unary => |un| un.getStartLocation(),
       .call => |call| call.getStartLocation(),
       .group => |grp| grp.getStartLocation(),
+      .field => |fa| fa.getStartLocation(),
     };
   }
 
@@ -80,6 +84,7 @@ pub const ExpressionNode = union(enum) {
       .unary => |un| un.getEndLocation(),
       .call => |call| call.getEndLocation(),
       .group => |grp| grp.getEndLocation(),
+      .field => |fa| fa.getEndLocation(),
     };
   }
 
@@ -97,6 +102,7 @@ pub const ExpressionNode = union(enum) {
       .unary => |un| un.getConstantness(),
       .call => |call| call.getConstantness(),
       .group => |grp| grp.getConstantness(),
+      .field => |fa| fa.getConstantness(),
     };
   }
 
@@ -113,6 +119,7 @@ pub const ExpressionNode = union(enum) {
       .unary => |una| una.getType(),
       .call => |call| call.getType(),
       .group => |grp| grp.getType(),
+      .field => |fa| fa.getType(),
     };
   }
 

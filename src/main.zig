@@ -66,10 +66,13 @@ pub fn main() anyerror!void {
   for( stmts ) |stmt| {
     try nl.ast.printer.printStatementNode(
       std.io.getStdOut().writer(),
-      &stmt,
-      0,
-     false
+      &stmt, 0, true
     );
   }
 
 }
+
+// 1. resolve IDs in the entry file
+// 2. find entry points
+//    if no or >1 entry points -> error
+// 3. full resolution of the entry point and its dependencies

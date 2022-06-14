@@ -18,7 +18,7 @@ pub fn traverseStatement(
 
   switch( stmt.* ) {
     .constant => |*cst| try traverseConstant(fns, traverser, cst),
-    .function => @panic("NYI"),
+    .function => |*fun| try traverseFunction(fns, traverser, fun),
   }
 
   if( fns.exitStatement ) |f|
@@ -48,6 +48,19 @@ pub fn traverseConstant(
 
   if( fns.exitConstant ) |f|
     try f(traverser, cst);
+}
+
+/// Traverses a function declaration node using the given functions and
+/// traverser.
+pub fn traverseFunction(
+  fns: anytype,
+  traverser: @TypeOf(fns).Traverser,
+  fun: NodePtr(ast.FunctionNode, !@TypeOf(fns).isMutator)
+) @TypeOf(fns).Error!void {
+  _ = fns;
+  _ = traverser;
+  _ = fun;
+  @panic("NYI");
 }
 
 
@@ -83,6 +96,8 @@ pub fn traverseExpression(
       try traverseCallExpression(fns, traverser, call),
     .group => |*grp|
       try traverseGroupExpression(fns, traverser, grp),
+    .field => |*fa|
+      try traverseFieldAccess(fns, traverser, fa),
   }
 
   if( fns.exitExpression ) |f|
@@ -158,7 +173,16 @@ pub fn traverseGroupExpression(
     try f(traverser, grp);
 }
 
-
+pub fn traverseFieldAccess(
+  fns: anytype,
+  traverser: @TypeOf(fns).Traverser,
+  fa: NodePtr(ast.FieldAccessNode, !@TypeOf(fns).isMutator)
+) @TypeOf(fns).Error!void {
+  _ = fns;
+  _ = traverser;
+  _ = fa;
+  @panic("NYI");
+}
 
 /// Structure containing all of the optional traversal functions.
 ///

@@ -153,15 +153,6 @@ pub fn parseConstant(
   var id_node = try self.parseIdentifier();
   errdefer id_node.deinit(self.alloc);
 
-  if( id_node.isSegmented() ) {
-    try self.diagnostics.pushError(
-      "Only simple identifiers are allowed for constant's names.", .{},
-      id_node.getStartLocation(),
-      id_node.getEndLocation()
-    );
-    return Error.unexpected_segmented_identifier;
-  }
-
   try self.skipWhitespace();
 
   var type_expr: ?ast.ExpressionNode = null;
@@ -214,7 +205,7 @@ pub fn parseFunction(
 
   var name = try self.parseIdentifier();
   var metadata = ast.FunctionNode.Metadata {};
-  var arguments = std.ArrayList(ast.FunctionNode.ArgumentNode).init(self.alloc);
+  var arguments = std.ArrayList(ast.ArgumentNode).init(self.alloc);
   var return_type: ?ast.ExpressionNode = null;
   var content = std.ArrayList(ast.StatementNode).init(self.alloc);
 
@@ -233,15 +224,6 @@ pub fn parseFunction(
   }
 
   try self.skipWhitespace();
-
-  if( name.isSegmented() ) {
-    try self.diagnostics.pushError(
-      "Segmented identifiers aren't allowed as function names.", .{},
-      name.getStartLocation(), name.getEndLocation()
-    );
-
-    return error.unexpected_segmented_identifier;
-  }
 
   // TODO put signature parsing in its own function
   while( true ) {
@@ -279,15 +261,6 @@ pub fn parseFunction(
 
         var id = try self.parseIdentifier();
         errdefer id.deinit(self.alloc);
-
-        if( id.isSegmented() ) {
-          try self.diagnostics.pushError(
-            "Segmented identifiers aren't allowed as argument names.", .{},
-            id.getStartLocation(), id.getEndLocation(),
-          );
-
-          return Error.unexpected_segmented_identifier;
-        }
 
         try self.skipWhitespace();
 
@@ -596,7 +569,7 @@ pub fn parseUnaryExpression(
     }};
   }
 
-  return try self.parseExpressionAtom();
+  return try self.parsePostfixExpression();
 }
 
 /// Parses the operator of an unary expression.
@@ -629,6 +602,37 @@ pub fn parseUnaryOperator(
     },
     else => return null,
   }
+}
+
+pub fn parsePostfixExpression(
+  self: *Parser
+) Error!ast.ExpressionNode {
+  var expr = try self.parseExpressionAtom();
+  errdefer expr.deinit(self.alloc);
+
+  while( try self.peekToken() ) |token| {
+    expr = switch( token.kind ) {
+      .slash => try self.parseFieldAccess(expr),
+      else => break,
+    };
+  }
+
+  return expr;
+}
+
+pub fn parseFieldAccess(
+  self: *Parser,
+  storage: ast.ExpressionNode
+) Error!ast.ExpressionNode {
+  _ = try self.expectToken(.slash);
+
+  var id = try self.parseIdentifier();
+  errdefer id.deinit(self.alloc);
+
+  return ast.ExpressionNode { .field = .{
+    .storage = try self.heapify(storage),
+    .field = id
+  }};
 }
 
 
@@ -683,39 +687,12 @@ pub fn parseExpressionAtom(
 pub fn parseIdentifier(
   self: *Parser
 ) Error!ast.IdentifierNode {
-  var list = std.ArrayList([]u8).init(self.alloc);
-  errdefer {
-    for( list.items ) |item| self.alloc.free(item);
-
-    list.deinit();
-  }
-
-  var start_loc: Location = undefined;
-  var end_loc: Location = undefined;
-
-  while( true ) {
-    const token = try self.expectToken(.identifier);
-
-    if( list.items.len == 0 )
-      start_loc = token.start_location;
-
-    try list.append(
-      try self.alloc.dupe(u8, token.value)
-    );
-
-    if( !try self.checkToken(.slash) ) {
-      end_loc = token.end_location;
-      break;
-    }
-    
-    // skip the /
-    self.nextToken();
-  }
+  const token = try self.expectToken(.identifier);
 
   return ast.IdentifierNode {
-    .parts = list.toOwnedSlice(),
-    .start_location = start_loc,
-    .end_location = end_loc
+    .name = try self.alloc.dupe(u8, token.value),
+    .start_location = token.start_location,
+    .end_location = token.end_location
   };
 }
 
@@ -868,9 +845,9 @@ fn updateNextStatementFlags(
 ) Error!bool {
   const eql = std.mem.eql;
 
-  if( eql(u8, id.parts[0], "show_tokens") )
+  if( eql(u8, id.name, "show_tokens") )
     self.next_statement_flags.show_tokens = true
-  else if( eql(u8, id.parts[0], "show_ast") )
+  else if( eql(u8, id.name, "show_ast") )
     self.next_statement_flags.show_ast = true
   else
     return false;

@@ -13,6 +13,7 @@ const Location = nl.diagnostic.Location;
 const IdentifierNode = ast.IdentifierNode;
 const ExpressionNode = ast.ExpressionNode;
 const StatementNode = ast.StatementNode;
+const ArgumentNode = ast.ArgumentNode;
 
 const FunctionNode = @This();
 
@@ -79,30 +80,6 @@ pub fn getEndLocation(
 ) Location {
   return self.signature_end_location;
 }
-
-
-
-// TODO move it to its own file
-/// Structure representing an argument definition.
-///
-pub const ArgumentNode = struct {
-  /// Name of the argument.
-  name: IdentifierNode,
-  /// Type of the argument.
-  type: ExpressionNode,
-
-
-
-  /// Deinitialises the argument node.
-  ///
-  pub fn deinit(
-    self: *ArgumentNode,
-    alloc: Allocator
-  ) void {
-    self.name.deinit(alloc);
-    self.type.deinit(alloc);
-  }
-};
 
 
 

@@ -1,7 +1,4 @@
-/// Structure representing a segmented identifier.
-///
-/// This structure is also used for simple identifiers, which are segmented
-/// identifiers with only 1 segment.
+/// Structure representing aa identifier.
 ///
 
 
@@ -19,8 +16,8 @@ const IdentifierNode = @This();
 
 
 
-/// Segments of the identifier.
-parts: [][]u8,
+/// Name of the identifier.
+name: []u8,
 
 /// Start location of the identifier.
 start_location: Location,
@@ -48,10 +45,7 @@ pub fn deinit(
   self: *IdentifierNode,
   alloc: Allocator
 ) void {
-  for( self.parts ) |part|
-    alloc.free(part);
-
-  alloc.free(self.parts);
+  alloc.free(self.name);
 }
 
 
@@ -93,16 +87,6 @@ pub fn getType(
 
 
 
-/// Checks if the identifier is segmented (more than 1 segment) or not.
-///
-pub fn isSegmented(
-  self: IdentifierNode
-) bool {
-  return self.parts.len > 1;
-}
-
-
-
 /// Formats the identifier.
 ///
 pub fn format(
@@ -113,11 +97,5 @@ pub fn format(
 ) @TypeOf(writer).Error!void {
   _ = fmt;
   _ = options;
-  for( self.parts ) |part, i| {
-    try writer.writeAll(part);
-
-    if( i != self.parts.len - 1 ) {
-      try writer.writeByte('/');
-    }
-  }
+  try writer.writeAll(self.name);
 }
