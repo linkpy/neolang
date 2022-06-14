@@ -287,11 +287,32 @@ pub const Scope = struct {
   ) BindingError!*Entry {
     if( self.hasBinding(name) )
       return BindingError.binding_already_exists;
-    
+
     var entry = try self.storage.newEntry();
     try self.bindings.put(name, entry.id);
 
     return entry;
+  }
+
+  /// Creates a binding with an already registered ID.
+  ///
+  pub fn bindWith(
+    self: *Scope,
+    name: []const u8,
+    id: IdentifierID
+  ) BindingError!void {
+    if( self.hasBinding(name) )
+      return error.binding_already_exists;
+
+    try self.bindings.put(name, id);
+  }
+
+
+
+  pub fn clearBindings(
+    self: *Scope
+  ) void {
+    self.bindings.clearRetainingCapacity();
   }
 
 };

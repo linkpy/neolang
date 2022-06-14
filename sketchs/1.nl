@@ -1,6 +1,5 @@
 const a: u8 = 40u1 + 2u8;
 const b: u8 = a * 2;
-const c = std/test;
 
 proc test
      is entry_point
@@ -8,5 +7,5 @@ proc test
      param another_arg u8
      returns i1
 begin
-  const for_now_there_is_only_constants = 1 == 1;
+  const somevalue = a + b + some_arg + another_arg;
 end

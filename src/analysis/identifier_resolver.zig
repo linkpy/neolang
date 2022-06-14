@@ -74,6 +74,9 @@ pub fn processFile(
   if( self.errors > 0 )
     return false;
 
+  root_scope.clearBindings();
+  try root_scope.bindBuiltins();
+
   try self.resolveFile(stmts);
 
   return self.errors == 0;
@@ -90,8 +93,9 @@ fn scoutFile(
   }
 }
 
-
 const scoutFns: TraverserFns = .{
+  .enterFunctionScope = enterFunctionScope,
+  .exitFunction = exitFunction,
   .visitIdentifierDefinition = scoutIdentifierDefinition,
 };
 
@@ -99,23 +103,19 @@ fn scoutIdentifierDefinition(
   self: *IdentifierResolver,
   id: *ast.IdentifierNode
 ) Error!void {
-  if( id.isSegmented() )
-    @panic("NYI");
+  var scope = &self.scopes.items[self.scopes.items.len - 1];
 
-  var scope: *Scope = &self.scopes.items[self.scopes.items.len - 1];
-
-  if( scope.hasBinding(id.parts[0]) ) {
+  if( scope.hasBinding(id.name) ) {
     try self.diagnostics.pushError(
       "Declaration of '{s}' overshadows a previous declaration.",
-      .{ id.parts[0] },
+      .{ id.name },
       id.getStartLocation(), id.getEndLocation()
     );
 
     self.errors += 1;
 
   } else {
-
-    var entry = try scope.bindEntry(id.parts[0]);
+    var entry = try scope.bindEntry(id.name);
     entry.start_location = id.getStartLocation();
     entry.end_location = id.getEndLocation();
 
@@ -135,8 +135,11 @@ fn resolveFile(
 }
 
 const resolveFns: TraverserFns = .{
+  .enterFunctionScope = enterFunctionScope,
+  .exitFunction = exitFunction,
   .enterConstant = resolveEnterConstant,
   .exitConstant = resolveExitConstant,
+  .visitIdentifierDefinition = resolveIdentifierDefinition,
   .visitIdentifierUsage = resolveIdentifierUsage,
 };
 
@@ -162,21 +165,29 @@ fn resolveExitConstant(
   }
 }
 
+fn resolveIdentifierDefinition(
+  self: *IdentifierResolver,
+  id_node: *ast.IdentifierNode
+) Error!void {
+  var scope: *Scope = &self.scopes.items[self.scopes.items.len - 1];
+
+  if( id_node.identifier_id ) |id| {
+    try scope.bindWith(id_node.name, id);
+  }
+}
+
 fn resolveIdentifierUsage(
   self: *IdentifierResolver,
   id_node: *ast.IdentifierNode
 ) Error!void {
-  if( id_node.isSegmented() )
-    @panic("NYI");
+  var scope = &self.scopes.items[self.scopes.items.len - 1];
 
-  var scope = self.scopes.items[self.scopes.items.len - 1];
-
-  if( scope.getBinding(id_node.parts[0]) ) |id| {
+  if( scope.getBinding(id_node.name) ) |id| {
     const entry = self.identifiers.getEntry(id).?;
 
     if( entry.is_being_defined ) {
       try self.diagnostics.pushError(
-        "Invalid recursive use of '{s}'.", .{ id_node.parts[0] },
+        "Invalid recursive use of '{s}'.", .{ id_node.name },
         id_node.getStartLocation(), id_node.getEndLocation()
       );
 
@@ -195,12 +206,36 @@ fn resolveIdentifierUsage(
   } else {
 
     try self.diagnostics.pushError(
-      "Usage of undeclared identifier '{s}'.", .{ id_node.parts[0] },
+      "Usage of undeclared identifier '{s}'.", .{ id_node.name },
       id_node.getStartLocation(), id_node.getEndLocation()
     );
 
     self.errors += 1;
   }
+}
+
+
+
+fn enterFunctionScope(
+  self: *IdentifierResolver,
+  fun: *ast.FunctionNode
+) Error!void {
+  _ = fun;
+
+  var parent_scope: *Scope = &self.scopes.items[self.scopes.items.len - 1];
+  var scope = parent_scope.scope();
+
+  try self.scopes.append(scope);
+}
+
+fn exitFunction(
+  self: *IdentifierResolver,
+  fun: *ast.FunctionNode
+) Error!void {
+  _ = fun;
+
+  var scope = self.scopes.pop();
+  scope.deinit();
 }
 
 

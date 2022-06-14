@@ -604,6 +604,8 @@ pub fn parseUnaryOperator(
   }
 }
 
+/// Parses a postfix expression.
+///
 pub fn parsePostfixExpression(
   self: *Parser
 ) Error!ast.ExpressionNode {
@@ -620,6 +622,8 @@ pub fn parsePostfixExpression(
   return expr;
 }
 
+/// Parses a field access.
+///
 pub fn parseFieldAccess(
   self: *Parser,
   storage: ast.ExpressionNode

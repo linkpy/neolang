@@ -16,8 +16,10 @@ pub fn printStatementNode(
   show_metadata: bool
 ) !void {
   switch( stmt.* ) {
-    .constant => |*cst| try printConstantNode(writer, cst, indent, show_metadata),
-    .function => |*fun| try printFunctionNode(writer, fun, indent, show_metadata),
+    .constant => |*cst|
+      try printConstantNode( writer, cst, indent, show_metadata ),
+    .function => |*fun|
+      try printFunctionNode( writer, fun, indent, show_metadata ),
   }
 }
 
@@ -29,23 +31,27 @@ pub fn printConstantNode(
   indent: usize,
   show_metadata: bool
 ) @TypeOf(writer).Error!void {
-  try printWithIndent(writer, indent, "+ ConstantNode\n", .{});
+  try printWithIndent(writer, indent, "{s}+ ConstantNode{s}\n", .{
+    node_style, reset
+  });
 
-  if( show_metadata ) {
-    try printWithIndent(writer, indent, "- Metadata: <no metadata to show>\n", .{});
-  }
+  if( show_metadata )
+    try printWithIndent(
+      writer, indent, "{s}  Metadata: <no metadata to show>{s}\n",
+      .{ meta_style, reset }
+    );
 
-  try printWithIndent(writer, indent, "- Name:\n", .{});
+  try printWithIndent(writer, indent, "  Name:\n", .{});
   try printIdentifierNode(writer, &cst.name, indent+2, show_metadata);
 
   if( cst.type ) |typ| {
-    try printWithIndent(writer, indent, "- Type:\n", .{});
+    try printWithIndent(writer, indent, "  Type:\n", .{});
     try printExpressionNode(writer, &typ, indent+2, show_metadata);
   } else {
-    try printWithIndent(writer, indent, "- Type: <inferred>\n", .{});
+    try printWithIndent(writer, indent, "  Type: <inferred>\n", .{});
   }
 
-  try printWithIndent(writer, indent, "- Value:\n", .{});
+  try printWithIndent(writer, indent, "  Value:\n", .{});
   try printExpressionNode(writer, &cst.value, indent+2, show_metadata);
 }
 
@@ -57,43 +63,51 @@ pub fn printFunctionNode(
   indent: usize,
   show_metadata: bool
 ) @TypeOf(writer).Error!void {
-  try printWithIndent(writer, indent, "+ FunctionNode\n", .{});
+  try printWithIndent(writer, indent, "{s}+ FunctionNode{s}\n", .{
+    node_style, reset
+  });
 
   if( show_metadata ) {
-    try printWithIndent(writer, indent, "- Metadata:\n", .{});
-    try printWithIndent(writer, indent+2, "- Recursive? {}\n", .{ fun.metadata.is_recursive });
-    try printWithIndent(writer, indent+2, "- Entry point? {}\n", .{ fun.metadata.is_entry_point });
+    try printWithIndent(writer, indent, "{s}  Metadata:\n", .{ meta_style });
+    try printWithIndent(writer, indent+2, "- Recursive? {}\n", .{
+      fun.metadata.is_recursive
+    });
+    try printWithIndent(writer, indent+2, "- Entry point? {}{s}\n", .{
+      fun.metadata.is_entry_point, reset
+    });
   }
 
-  try printWithIndent(writer, indent, "- Name:\n", .{});
+  try printWithIndent(writer, indent, "  Name:\n", .{});
   try printIdentifierNode(writer, &fun.name, indent+2, show_metadata);
 
   if( fun.return_type ) |*expr| {
-    try printWithIndent(writer, indent, "- Return type:\n", .{});
+    try printWithIndent(writer, indent, "  Return type:\n", .{});
     try printExpressionNode(writer, expr, indent+2, show_metadata);
   } else {
-    try printWithIndent(writer, indent, "- Return type: <none>\n", .{});
+    try printWithIndent(writer, indent, "  Return type: <none>\n", .{});
   }
 
   if( fun.arguments.len == 0 ) {
-    try printWithIndent(writer, indent, "- Arguments: <none>\n", .{});
+    try printWithIndent(writer, indent, "  Arguments: <none>\n", .{});
   } else {
-    try printWithIndent(writer, indent, "- Arguments:\n", .{});
+    try printWithIndent(writer, indent, "  Arguments:\n", .{});
 
     for( fun.arguments ) |*arg| {
       // TODO write a printArgumentNode
-      try printWithIndent(writer, indent+2, "+ ArgumentNode\n", .{});
-      try printWithIndent(writer, indent+2, "- Name:\n", .{});
+      try printWithIndent(writer, indent+2, "{s}+ ArgumentNode{s}\n", .{
+        node_style, reset
+      });
+      try printWithIndent(writer, indent+2, "  Name:\n", .{});
       try printIdentifierNode(writer, &arg.name, indent+4, show_metadata);
-      try printWithIndent(writer, indent+2, "- Type:\n", .{});
+      try printWithIndent(writer, indent+2, "  Type:\n", .{});
       try printExpressionNode(writer, &arg.type, indent+4, show_metadata);
     }
   }
 
   if( fun.body.len == 0 ) {
-    try printWithIndent(writer, indent, "- Body: <empty>\n", .{});
+    try printWithIndent(writer, indent, "  Body: <empty>\n", .{});
   } else {
-    try printWithIndent(writer, indent, "- Body:\n", .{});
+    try printWithIndent(writer, indent, "  Body:\n", .{});
 
     for( fun.body ) |*stmt| {
       try printStatementNode(writer, stmt, indent+2, show_metadata);
@@ -112,14 +126,22 @@ pub fn printExpressionNode(
   show_metadata: bool
 ) @TypeOf(writer).Error!void {
   switch( expr.* ) {
-    .identifier => |*id| try printIdentifierNode(writer, id, indent, show_metadata),
-    .integer => |*int| try printIntegerNode(writer, int, indent, show_metadata),
-    .string => |*str| try printStringNode(writer, str, indent, show_metadata),
-    .binary => |*bin| try printBinaryExpressionNode(writer, bin, indent, show_metadata),
-    .unary => |*una| try printUnaryExpressionNode(writer, una, indent, show_metadata),
-    .call => |*call| try printCallExpressionNode(writer, call, indent, show_metadata),
-    .group => |*grp| try printGroupExpressionNode(writer, grp, indent, show_metadata),
-    .field => |*fa| try printFieldAccessNode(writer, fa, indent, show_metadata),
+    .identifier => |*id|
+      try printIdentifierNode( writer, id, indent, show_metadata ),
+    .integer => |*int|
+      try printIntegerNode(writer, int, indent, show_metadata),
+    .string => |*str|
+      try printStringNode(writer, str, indent, show_metadata),
+    .binary => |*bin|
+      try printBinaryExpressionNode(writer, bin, indent, show_metadata),
+    .unary => |*una|
+      try printUnaryExpressionNode(writer, una, indent, show_metadata),
+    .call => |*call|
+      try printCallExpressionNode(writer, call, indent, show_metadata),
+    .group => |*grp|
+      try printGroupExpressionNode(writer, grp, indent, show_metadata),
+    .field => |*fa|
+      try printFieldAccessNode(writer, fa, indent, show_metadata),
   }
 }
 
@@ -131,13 +153,19 @@ pub fn printIdentifierNode(
   indent: usize,
   show_metadata: bool
 ) @TypeOf(writer).Error!void {
-  try printWithIndent(writer, indent, "+ IdentifierNode: {s}\n", .{ id.name });
+  try printWithIndent(writer, indent, "{s}+ IdentifierNode: {s}{s}\n", .{
+    node_style, id.name, reset
+  });
 
   if( show_metadata ) {
-    try printWithIndent(writer, indent, "- Metadata:\n", .{});
+    try printWithIndent(writer, indent, "{s}  Metadata:\n", .{ meta_style });
     try printWithIndent(writer, indent+2, "- ID: {}\n", .{ id.identifier_id });
-    try printWithIndent(writer, indent+2, "- Constantness: {s}\n", .{ @tagName( id.constantness ) });
-    try printWithIndent(writer, indent+2, "- Type: {}\n", .{ id.type });
+    try printWithIndent(writer, indent+2, "- Constantness: {s}\n", .{
+      @tagName( id.constantness )
+    });
+    try printWithIndent(writer, indent+2, "- Type: {}{s}\n", .{
+      id.type, reset
+    });
   }
 }
 
@@ -149,12 +177,15 @@ pub fn printIntegerNode(
   indent: usize,
   show_metadata: bool
 ) @TypeOf(writer).Error!void {
-  try printWithIndent(writer, indent, "+ IntegerNode: {} ({s})\n", .{
-    int.value, @tagName(int.type_flag)
+  try printWithIndent(writer, indent, "{s}+ IntegerNode: {} ({s}){s}\n", .{
+    node_style, int.value, @tagName(int.type_flag), reset
   });
 
   if( show_metadata ) {
-    try printWithIndent(writer, indent, "- Metadata: <no metadata to show>\n", .{});
+    try printWithIndent(
+      writer, indent, "{s}  Metadata: <no metadata to show>{s}\n",
+      .{ meta_style, reset }
+    );
   }
 }
 
@@ -166,12 +197,15 @@ pub fn printStringNode(
   indent: usize,
   show_metadata: bool
 ) @TypeOf(writer).Error!void {
-  try printWithIndent(writer, indent, "+ StringNode\n", .{});
-  try printWithIndent(writer, indent, "- Value: {s}\n", .{ str.value });
+  try printWithIndent(writer, indent, "{s}+ StringNode: \"{s}\"{s}\n", .{
+    node_style, str.value, reset
+  });
 
-  if( show_metadata ) {
-    try printWithIndent(writer, indent, "- Metadata: <no metadata to show>\n", .{});
-  }
+  if( show_metadata )
+    try printWithIndent(
+      writer, indent, "{s}  Metadata: <no metadata to show>{s}\n", .{
+        meta_style, reset
+    });
 }
 
 /// Prints the AST of the given binary expression node.
@@ -182,19 +216,25 @@ pub fn printBinaryExpressionNode(
   indent: usize,
   show_metadata: bool
 ) @TypeOf(writer).Error!void {
-  try printWithIndent(writer, indent, "+ BinaryExpressionNode\n", .{});
-  try printWithIndent(writer, indent, "- Operator: {s}\n", .{ @tagName(bin.operator) });
+  try printWithIndent(
+    writer, indent, "{s}+ BinaryExpressionNode: {s}{s}\n",
+    .{ node_style, @tagName(bin.operator), reset }
+  );
 
   if( show_metadata ) {
-    try printWithIndent(writer, indent, "- Metadata:\n", .{});
-    try printWithIndent(writer, indent+2, "- Constantness: {s}\n", .{ @tagName( bin.constantness ) });
-    try printWithIndent(writer, indent+2, "- Type: {}\n", .{ bin.type });
+    try printWithIndent(writer, indent, "{s}  Metadata:\n", .{ meta_style });
+    try printWithIndent(writer, indent+2, "- Constantness: {s}\n", .{
+      @tagName( bin.constantness )
+    });
+    try printWithIndent(writer, indent+2, "- Type: {}{s}\n", .{
+      bin.type, reset
+    });
   }
   
-  try printWithIndent(writer, indent, "- Left-hand side:\n", .{ });
+  try printWithIndent(writer, indent, "  Left-hand side:\n", .{ });
   try printExpressionNode(writer, bin.left, indent+2, show_metadata);
 
-  try printWithIndent(writer, indent, "- Right-hand side:\n", .{ });
+  try printWithIndent(writer, indent, "  Right-hand side:\n", .{ });
   try printExpressionNode(writer, bin.right, indent+2, show_metadata);
 
 }
@@ -207,16 +247,21 @@ pub fn printUnaryExpressionNode(
   indent: usize,
   show_metadata: bool
 ) @TypeOf(writer).Error!void {
-  try printWithIndent(writer, indent, "+ UnaryExpressionNode\n", .{});
-  try printWithIndent(writer, indent, "- Operator: {s}\n", .{ @tagName(una.operator) });
+  try printWithIndent(writer, indent, "{s}+ UnaryExpressionNode: {s}{s}\n", .{
+    node_style, @tagName(una.operator), reset
+  });
 
   if( show_metadata ) {
-    try printWithIndent(writer, indent, "- Metadata:\n", .{});
-    try printWithIndent(writer, indent+2, "- Constantness: {s}\n", .{ @tagName( una.constantness ) });
-    try printWithIndent(writer, indent+2, "- Type: {}\n", .{ una.type });
+    try printWithIndent(writer, indent, "{s}  Metadata:\n", .{ meta_style });
+    try printWithIndent(writer, indent+2, "- Constantness: {s}\n", .{
+      @tagName( una.constantness )
+    });
+    try printWithIndent(writer, indent+2, "- Type: {}{s}\n", .{
+      una.type, reset
+    });
   }
 
-  try printWithIndent(writer, indent, "- Child:\n", .{});
+  try printWithIndent(writer, indent, "  Child:\n", .{});
   try printExpressionNode(writer, una.child, indent+2, show_metadata);
 
 }
@@ -229,19 +274,24 @@ pub fn printCallExpressionNode(
   indent: usize,
   show_metadata: bool
 ) @TypeOf(writer).Error!void {
-  try printWithIndent(writer, indent, "+ CallExpressionNode\n", .{});
+  try printWithIndent(writer, indent, "{s}+ CallExpressionNode{s}\n", .{
+    node_style, reset
+  });
 
-  if( show_metadata ) {
-    try printWithIndent(writer, indent, "- Metadata: <no metadata to show>\n", .{});
-  }
+  if( show_metadata )
+    try printWithIndent(
+      writer, indent, "{s}  Metadata: <no metadata to show>{s}\n",
+      .{ meta_style, reset }
+    );
+
 
   if( call.arguments.len > 0 ) {
-    try printWithIndent(writer, indent, "+ Argument(s):\n", .{});
+    try printWithIndent(writer, indent, "  Argument(s):\n", .{});
 
     for( call.arguments ) |*arg|
       try printExpressionNode(writer, arg, indent+2, show_metadata);
   } else {
-    try printWithIndent(writer, indent, "+ Argument(s): <no arguments>\n", .{});
+    try printWithIndent(writer, indent, "  Argument(s): <no arguments>\n", .{});
   }
 }
 
@@ -253,13 +303,18 @@ pub fn printGroupExpressionNode(
   indent: usize,
   show_metadata: bool
 ) @TypeOf(writer).Error!void {
-  try printWithIndent(writer, indent, "+ GroupExpressionNode\n", .{});
+  try printWithIndent(writer, indent, "{s}+ GroupExpressionNode{s}\n", .{
+    node_style, reset
+  });
 
-  if( show_metadata ) {
-    try printWithIndent(writer, indent, "- Metadata: <no metadata to show>\n", .{});
-  }
+  if( show_metadata )
+    try printWithIndent(
+      writer, indent, "{s}  Metadata: <no metadata to show>{s}\n",
+      .{ meta_style, reset }
+    );
 
-  try printWithIndent(writer, indent, "- Child:\n", .{});
+
+  try printWithIndent(writer, indent, "  Child:\n", .{});
   try printExpressionNode(writer, grp.child, indent+2, show_metadata);
 }
 
@@ -271,18 +326,24 @@ pub fn printFieldAccessNode(
   indent: usize,
   show_metadata: bool
 ) @TypeOf(writer).Error!void {
-  try printWithIndent(writer, indent, "+ FieldAccessNode\n", .{});
+  try printWithIndent(writer, indent, "{s}+ FieldAccessNode{s}\n", .{
+    node_style, reset
+  });
 
   if( show_metadata ) {
-    try printWithIndent(writer, indent, "- Metadata:\n", .{});
-    try printWithIndent(writer, indent+2, "- Constantness: {s}\n", .{ @tagName(fa.getConstantness()) });
-    try printWithIndent(writer, indent+2, "- Type: {}\n", .{ fa.getType() });
+    try printWithIndent(writer, indent, "{s}  Metadata:\n", .{ meta_style });
+    try printWithIndent(writer, indent+2, "- Constantness: {s}\n", .{
+      @tagName(fa.getConstantness())
+    });
+    try printWithIndent(writer, indent+2, "- Type: {}{s}\n", .{
+      fa.getType(), reset
+    });
   }
 
-  try printWithIndent(writer, indent, "- Storage:\n", .{});
+  try printWithIndent(writer, indent, "  Storage:\n", .{});
   try printExpressionNode(writer, fa.storage, indent+2, show_metadata);
 
-  try printWithIndent(writer, indent, "- Field:\n", .{});
+  try printWithIndent(writer, indent, "  Field:\n", .{});
   try printIdentifierNode(writer, &fa.field, indent+2, show_metadata);
 }
 
@@ -299,3 +360,8 @@ fn printWithIndent(
   try writer.writeByteNTimes(' ', indent);
   try writer.print(fmt, args);
 }
+
+
+const reset = "\x1b[0m";
+const node_style = "\x1b[1;35m";
+const meta_style = "\x1b[2;34m";

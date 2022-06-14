@@ -57,10 +57,25 @@ pub fn traverseFunction(
   traverser: @TypeOf(fns).Traverser,
   fun: NodePtr(ast.FunctionNode, !@TypeOf(fns).isMutator)
 ) @TypeOf(fns).Error!void {
-  _ = fns;
-  _ = traverser;
-  _ = fun;
-  @panic("NYI");
+  if( fns.enterFunction ) |f|
+    try f(traverser, fun);
+
+  if( fns.visitIdentifier ) |f|
+    try f(traverser, &fun.name);
+  if( fns.visitIdentifierDefinition ) |f|
+    try f(traverser, &fun.name);
+
+  if( fns.enterFunctionScope ) |f|
+    try f(traverser, fun);
+
+  for( fun.arguments ) |*arg|
+    try traverseArgument(fns, traverser, arg);
+
+  for( fun.body ) |*stmt|
+    try traverseStatement(fns, traverser, stmt);
+
+  if( fns.exitFunction ) |f|
+    try f(traverser, fun);
 }
 
 
@@ -173,16 +188,48 @@ pub fn traverseGroupExpression(
     try f(traverser, grp);
 }
 
+/// Traverses a field expression.
+///
 pub fn traverseFieldAccess(
   fns: anytype,
   traverser: @TypeOf(fns).Traverser,
   fa: NodePtr(ast.FieldAccessNode, !@TypeOf(fns).isMutator)
 ) @TypeOf(fns).Error!void {
-  _ = fns;
-  _ = traverser;
-  _ = fa;
-  @panic("NYI");
+  if( fns.enterFieldAccess ) |f|
+    try f(traverser, fa);
+
+  try traverseExpression(fns, traverser, fa.storage);
+
+  if( fns.visitIdentifier ) |f|
+    try f(traverser, &fa.field);
+
+  if( fns.exitFieldAccess ) |f|
+    try f(traverser, fa);
 }
+
+
+
+/// Traverses an argument declaration.
+///
+pub fn traverseArgument(
+  fns: anytype,
+  traverser: @TypeOf(fns).Traverser,
+  arg: NodePtr(ast.ArgumentNode, !@TypeOf(fns).isMutator)
+) @TypeOf(fns).Error!void {
+  if( fns.enterArgument ) |f|
+    try f(traverser, arg);
+
+  if( fns.visitIdentifier ) |f|
+    try f(traverser, &arg.name);
+  if( fns.visitIdentifierDefinition ) |f|
+    try f(traverser, &arg.name);
+
+  try traverseExpression(fns, traverser, &arg.type);
+
+  if( fns.exitArgument ) |f|
+    try f(traverser, arg);
+}
+
 
 /// Structure containing all of the optional traversal functions.
 ///
@@ -196,6 +243,9 @@ pub fn TraverserFns(
     exitStatement: ?TraverserFn(T, E, ast.StatementNode, mutator) = null,
     enterConstant: ?TraverserFn(T, E, ast.ConstantNode, mutator) = null,
     exitConstant: ?TraverserFn(T, E, ast.ConstantNode, mutator) = null,
+    enterFunction: ?TraverserFn(T, E, ast.FunctionNode, mutator) = null,
+    enterFunctionScope: ?TraverserFn(T, E, ast.FunctionNode, mutator) = null,
+    exitFunction: ?TraverserFn(T, E, ast.FunctionNode, mutator) = null,
 
     enterExpression: ?TraverserFn(T, E, ast.ExpressionNode, mutator) = null,
     exitExpression: ?TraverserFn(T, E, ast.ExpressionNode, mutator) = null,
@@ -207,6 +257,11 @@ pub fn TraverserFns(
     exitCallExpression: ?TraverserFn(T, E, ast.CallExpressionNode, mutator) = null,
     enterGroupExpression: ?TraverserFn(T, E, ast.GroupExpressionNode, mutator) = null,
     exitGroupExpression: ?TraverserFn(T, E, ast.GroupExpressionNode, mutator) = null,
+    enterFieldAccess: ?TraverserFn(T, E, ast.FieldAccessNode, mutator) = null,
+    exitFieldAccess: ?TraverserFn(T, E, ast.FieldAccessNode, mutator) = null,
+
+    enterArgument: ?TraverserFn(T, E, ast.ArgumentNode, mutator) = null,
+    exitArgument: ?TraverserFn(T, E, ast.ArgumentNode, mutator) = null,
 
     visitIdentifier: ?TraverserFn(T, E, ast.IdentifierNode, mutator) = null,
     visitIdentifierDefinition: ?TraverserFn(T, E, ast.IdentifierNode, mutator) = null,

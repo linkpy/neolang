@@ -52,16 +52,16 @@ pub fn main() anyerror!void {
   }
 
 
-  // var id_resolver = IdResolver.init(
-  //   alloc, &diags, &id_storage
-  // );
-  // defer id_resolver.deinit();
+  var id_resolver = IdResolver.init(
+    alloc, &diags, &id_storage
+  );
+  defer id_resolver.deinit();
 
-  // if( id_resolver.processFile(stmts) ) |v| {
-  //   std.log.info("Indentifier resolution: {} (errors: {})", .{ v, id_resolver.errors });
-  // } else |err| {
-  //   std.log.info("Error occured: {}", .{ err });
-  // }
+  if( id_resolver.processFile(stmts) ) |v| {
+    std.log.info("Indentifier resolution: {} (errors: {})", .{ v, id_resolver.errors });
+  } else |err| {
+    std.log.info("Error occured: {}", .{ err });
+  }
 
   for( stmts ) |stmt| {
     try nl.ast.printer.printStatementNode(
