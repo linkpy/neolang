@@ -10,6 +10,7 @@ const nl = @import("../nl.zig");
 const flags = nl.ast.flags;
 const Location = nl.diagnostic.Location;
 const Type =  nl.types.Type;
+const Variant = nl.vm.Variant;
 
 const IntegerNode = @This();
 
@@ -45,6 +46,15 @@ pub fn getEndLocation(
 
 
 
+/// Gets the constantness of the expression node.
+///
+pub fn getConstantness(
+  self: IntegerNode
+) flags.ConstantExpressionFlag {
+  _ = self;
+  return .constant;
+}
+
 /// Gets the type of the expression node.
 ///
 pub fn getType(
@@ -62,6 +72,26 @@ pub fn getType(
     .u8 => Type.U8,
     .iptr => Type.IPtr,
     .uptr => Type.UPtr,
+  };
+}
+
+/// Gets the variant corresponding to the integer.
+///
+pub fn getValue(
+  self: IntegerNode
+) ?Variant {
+  return switch( self.type_flag ) {
+    .ct => Variant { .ct_int = self.value },
+    .i1 => Variant { .i1 = @intCast(i8, self.value) },
+    .i2 => Variant { .i2 = @intCast(i16, self.value) },
+    .i4 => Variant { .i4 = @intCast(i32, self.value) },
+    .i8 => Variant { .i8 = @intCast(i64, self.value) },
+    .u1 => Variant { .u1 = @intCast(u8, self.value) },
+    .u2 => Variant { .u2 = @intCast(u16, self.value) },
+    .u4 => Variant { .u4 = @intCast(u32, self.value) },
+    .u8 => Variant { .u8 = @intCast(u64, self.value) },
+    .iptr => Variant { .iptr = @intCast(isize, self.value) },
+    .uptr => Variant { .uptr = @intCast(usize, self.value) }
   };
 }
 

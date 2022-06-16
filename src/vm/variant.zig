@@ -46,5 +46,4 @@ pub const Variant = union(enum) {
     };
   }
 
-
 };

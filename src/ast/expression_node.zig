@@ -113,7 +113,7 @@ pub const ExpressionNode = union(enum) {
   ) ?Type {
     return switch( self ) {
       .integer => |int| int.getType(),
-      .string => null,
+      .string => @panic("NYI"),
       .identifier => |id| id.getType(),
       .binary => |bin| bin.getType(),
       .unary => |una| una.getType(),
@@ -123,4 +123,18 @@ pub const ExpressionNode = union(enum) {
     };
   }
 
+  pub fn getValue(
+    self: ExpressionNode
+  ) ?Type {
+    return switch( self ) {
+      .integer => |int| int.getValue(),
+      .string => @panic("NYI"),
+      .identifier => |id| id.getValue(),
+      .binary => |bin| bin.getValue(),
+      .unary => |una| una.getValue(),
+      .call => @panic("NYI"),
+      .group => @panic("NYI"),
+      .field => @panic("NYI"),
+    };
+  }
 };

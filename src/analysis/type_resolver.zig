@@ -1,17 +1,17 @@
 /// Structure resolving type information in the AST.
 ///
 
-// TODO remove order dependence
 // TODO check that integer fits their type
 
 const std = @import("std");
 
 const nl = @import("../nl.zig");
 const ast = nl.ast;
-const trv = nl.ast.traverser;
 const Diagnostics = nl.diagnostic.Diagnostics;
 const IdentifierStorage = nl.storage.Identifier;
 const Type = nl.types.Type;
+const Evaluator = nl.vm.Evaluator;
+const Variant = nl.vm.Variant;
 
 const TypeResolver = @This();
 
@@ -21,288 +21,277 @@ const TypeResolver = @This();
 diagnostics: *Diagnostics,
 /// Registered identifiers.
 identifiers: *IdentifierStorage,
+/// Evaluator used for type expressions.
+evaluator: Evaluator,
 
+/// Number of unresolved types.
+unresolved: usize,
 /// Number of error that occured during resolving.
 errors: usize,
-
-debug: bool = false,
 
 
 
 /// Initialises a new instance.
 ///
 pub fn init(
+  alloc: std.mem.Allocator,
   diags: *Diagnostics,
   ids: *IdentifierStorage
 ) TypeResolver {
   return TypeResolver {
     .diagnostics = diags,
     .identifiers = ids,
+    .evaluator = Evaluator.init(alloc, diags, ids),
+    .unresolved = 0,
     .errors = 0,
   };
 }
 
 
 
-/// Resolves the types in a statement node.
+/// Resolves all of the given statements. They are considered to be part of the
+/// root scope.
 ///
-pub fn resolveStatement(
+pub fn processFile(
+  self: *TypeResolver,
+  stmts: []ast.StatementNode
+) Error!bool {
+  var last_unresolved: usize = std.math.maxInt(usize);
+
+  while( last_unresolved != 0 ) {
+    self.unresolved = 0;
+
+    for( stmts ) |*stmt| {
+      try self.resolveStatement(stmt);
+    }
+
+    // the number of unresolved types should only decrease with each passes
+    if( self.unresolved >= last_unresolved ) {
+      @panic("may god have mercy on us. boot up lldb :c");
+    }
+
+    last_unresolved = self.unresolved;
+  }
+
+  return self.errors == 0;
+}
+
+
+
+/// Resolves the types within the given statement.
+///
+fn resolveStatement(
   self: *TypeResolver,
   stmt: *ast.StatementNode
 ) Error!void {
-  switch( stmt.* ) {
-    .constant => |*cst| try self.resolveConstant(cst),
-  }
+  const res = switch( stmt.* ) {
+    .constant => |*cst| self.resolveConstant(cst),
+    .function => |*fun| self.resolveFunction(fun),
+  };
+
+  res catch |err| {
+    if( err == error.unresolved_type )
+      self.unresolved += 1
+    else
+      return err;
+  };
 }
 
-/// Resolves the type of a constant declaration node.
+/// Resolves the constant's types.
 ///
-pub fn resolveConstant(
+fn resolveConstant(
   self: *TypeResolver,
   cst: *ast.ConstantNode
 ) Error!void {
-  if( cst.name.identifier_id ) |id| {
-    
-    if( cst.type ) |*type_expr| {
-      try self.resolveExpression(type_expr);
-
-      if( type_expr.getType() ) |typ| {
-        if( !typ.isSameAs(Type.TypeT) ) {
-          try self.diagnostics.pushError(
-            "Expected a type, got a {}.",
-            .{ typ },
-            type_expr.getStartLocation(),
-            type_expr.getEndLocation()
-          );
-
-          return;
-        }
-      }
+  // if the statement was already resolved
+  if( cst.name.getType() != null )
+    return;
 
 
-    }
-
-    try self.resolveExpression(&cst.value);
+  var target_type: ?Type = null;
 
 
-    if( cst.value.getType() ) |typ| {
-      var entry = self.identifiers.getEntry(id).?;
+  if( cst.type ) |*type_expr| {
+    (try self.resolveExpression(type_expr)) orelse return;
+    const eval_res =
+      try self.evaluator.evaluateExpression(type_expr, Type.TypeT);
 
-      cst.name.constantness = cst.value.getConstantness();
-      cst.name.type = typ;
-
-      entry.data = .{ .expression = .{
-        .constantness = cst.name.constantness,
-        .type = typ,
-      }};
-
-    }
+    target_type = eval_res.type;
   }
+
+  (try self.resolveExpression(&cst.value)) orelse return;
+  const value_type = cst.value.getType().?;
+
+  if( target_type != null and !value_type.canBeCoercedTo(target_type.?) ) {
+
+    // TODO avoid adding duplicate diagnostics
+    try self.diagnostics.pushError(
+      "'{}' cannot be coerced to '{}'",
+      .{ value_type, target_type.? },
+      cst.value.getStartLocation(), cst.value.getEndLocation(),
+    );
+
+    self.errors += 1;
+    return;
+  }
+
+  if( cst.value.getConstantness() != .constant ) {
+    // TODO avoid adding duplicate diagnostics
+    try self.diagnostics.pushError(
+      "Only constant expressions are allowed as values for constants.", .{},
+      cst.value.getStartLocation(), cst.value.getEndLocation()
+    );
+
+    self.errors += 1;
+    return;
+  }
+
+  const name_id = cst.name.identifier_id orelse return;
+  var entry = self.identifiers.getEntry(name_id).?;
+  const value = try self.evaluator.evaluateExpression(&cst.value, target_type);
+
+  cst.name.constantness = .constant;
+  cst.name.type = target_type orelse value_type;
+  cst.name.value = value;
+
+  entry.expr.constantness = .constant;
+  entry.expr.type = target_type orelse value_type;
+  entry.expr.value = value;
+}
+
+/// Resolves the function's type and then resolves its body's statements.
+///
+fn resolveFunction(
+  self: *TypeResolver,
+  fun: *ast.FunctionNode
+) Error!void {
+  _ = self;
+  _ = fun;
+  @panic("NYI"); // TODO
 }
 
 
 
-/// Resolves the types of an expression node.
+/// Resolves the type of the given expression.
 ///
-pub fn resolveExpression(
+fn resolveExpression(
   self: *TypeResolver,
-  expr: *ast.ExpressionNode
-) Error!void {
-  switch( expr.* ) {
-    .string, .integer => {},
-    .identifier => |*id| try self.resolveIdentifier(id),
-    .unary => |*una| try self.resolveUnaryExpression(una),
-    .binary => |*bin| try self.resolveBinaryExpression(bin),
-    .call => @panic("NYI"),
-    .group => |*grp| try self.resolveExpression(grp.child),
+  expr: *ast.ExpressionNode,
+) Error!?void {
+  if( expr.getType() != null ) {
+    return {};
   }
+
+  return switch( expr.* ) {
+    // should never match integers or strings as they always have a type.
+    .integer, .string => unreachable,
+    .identifier => |*id| try self.resolveIdentifier(id),
+    .binary => |*bin| try self.resolveBinaryExpression(bin),
+    .unary => |*una| try self.resolveUnaryExpression(una),
+    .call => @panic("NYI"),
+    .group => @panic("NYI"),
+    .field => @panic("NYI"),
+  };
 }
 
 /// Resolves the type of the given identifier.
 ///
-pub fn resolveIdentifier(
+fn resolveIdentifier(
   self: *TypeResolver,
-  id_expr: *ast.IdentifierNode
-) Error!void {
-  if( id_expr.isSegmented() ) {
-    @panic("NYI");
-  } else {
+  ident: *ast.IdentifierNode,
+) Error!?void {
+  // resolveExpression already checks if the node is resolved
 
-    if( id_expr.identifier_id ) |id| {
-      var entry = self.identifiers.getEntry(id).?;
-      
-      if( entry.data == .expression ) {
-        const expr_data = entry.data.expression;
-        id_expr.constantness = expr_data.constantness;
-        id_expr.type = expr_data.type;
-
-      } else {
-
-        try self.diagnostics.pushVerbose(
-          "Identifier without ID", .{}, false,
-          id_expr.getStartLocation(),
-          id_expr.getEndLocation()
-        );
-      }
-    }
-
-  }
-}
-
-/// Resolves the type of an unary expression.
-///
-pub fn resolveUnaryExpression(
-  self: *TypeResolver,
-  una: *ast.UnaryExpressionNode
-) Error!void {
-  try self.resolveExpression(una.child);
-
-  // if the resolver managed to resolve the child expression's type
-  if( una.child.getType() ) |typ| {
-    // if the child expression type supports this unary operation
-    if( typ.getUnaryOperationResultType(una.operator) ) |res_typ| {
-      una.constantness = una.child.getConstantness();
-      una.type = res_typ;
-
-    } else {
-
-      try self.diagnostics.pushError(
-        "'{}' doesn't support the '{s}'' unary operation.",
-        .{ typ, @tagName(una.operator) },
-        una.getStartLocation(),
-        una.getEndLocation()
-      );
-    }
-  }
-}
-
-/// Resolves the type of a binary expression.
-///
-pub fn resolveBinaryExpression(
-  self: *TypeResolver,
-  bin: *ast.BinaryExpressionNode
-) Error!void {
-  try self.resolveExpression(bin.left);
-  try self.resolveExpression(bin.right);
-
-  // if the resolver managed to resolve the left expression's type
-  if( bin.left.getType() ) |left_type| {
-    // if the resolver managed to resolve the right expression's type
-    if( bin.right.getType() ) |right_type| {
-
-      // if the binary operation between both types is valid
-      if( left_type.getBinaryOperationResultType(bin.operator, right_type) ) |typ| {
-        bin.constantness = bin.left.getConstantness().mix(bin.right.getConstantness());
-        bin.type = typ;
-
-      } else {
-
-        try self.diagnostics.pushError(
-          "Types '{}' and '{}' cannot be coerced together.", 
-          .{ left_type, right_type },
-          bin.getStartLocation(),
-          bin.getEndLocation()
-        );
-
-        try self.diagnostics.pushNote(
-          "The left-hand side of the expression is of type '{}'.",
-          .{ left_type }, false, 
-          bin.left.getStartLocation(),
-          bin.left.getEndLocation(),
-        );
-
-        try self.diagnostics.pushNote(
-          "The right-hand side of the expression is of type '{}'.",
-          .{ right_type }, false,
-          bin.right.getStartLocation(),
-          bin.right.getEndLocation(),
-        );
-
-      }
-    } else {
-      try self.diagnostics.pushVerbose(
-        "No attached type.", .{}, false,
-        bin.right.getStartLocation(), 
-        bin.right.getEndLocation(),
-      );
-    }
-  } else {
-    try self.diagnostics.pushVerbose(
-      "No attached type.", .{}, false,
-      bin.left.getStartLocation(), 
-      bin.left.getEndLocation(),
-    );
-  }
-}
-
-
-
-const resolveFns: TraverserFns = .{
-  .visitIdentifierUsage = resolveIdentifierUsage,
-  .exitUnaryExpression = resolveExitUnaryExpression,
-};
-
-fn resolveIdentifierUsage(
-  self: *TypeResolver,
-  id_node: *ast.IdentifierNode
-) Error!void {
-  const id = id_node.identifier_id orelse {
-    if( self.debug )
-      try self.diagnostics.pushVerbose(
-        "[DBG] Identifier '{}' has no ID.",
-        .{ id_node }, false,
-        id_node.getStartLocation(), id_node.getEndLocation()
-      );
-
-
-    return;
-  };
+  const id = ident.identifier_id orelse return null;
   const entry = self.identifiers.getEntry(id).?;
-  const data = switch( entry.data ) {
-    .expression => |dat| dat,
-    else => {
-      if( self.debug )
-        try self.diagnostics.pushVerbose(
-          "[DBG] Identifier '{}' has an ID but no expression data.",
-          .{ id_node }, false,
-          id_node.getStartLocation(), id_node.getEndLocation()
-      );
 
-      return;
-    },
-  };
+  // if the definition of this indentifier was resolved
+  if( entry.expr.type ) |id_type| {
+    ident.constantness = entry.expr.constantness;
+    ident.type = id_type;
 
-  id_node.constantness = data.constantness;
-  id_node.type = data.type;
+    return {};
+
+  } else {
+
+    self.unresolved += 1;
+    return null;
+  }
 }
 
-fn resolveExitUnaryExpression(
+/// Resolves the type of the given unary expression.
+///
+fn resolveUnaryExpression(
   self: *TypeResolver,
-  una_node: *ast.UnaryExpressionNode
-) Error!void {
-  una_node.constantness = una_node.child.getConstantness();
+  una: *ast.UnaryExpressionNode,
+) Error!?void {
+  // resolveExpression already checks if the node is resolved
 
-  const child_type = una_node.child.getType() orelse return;
+  (try self.resolveExpression(una.child)) orelse return null;
 
-  if( child_type.getUnaryOperationResultType(una_node.operator) ) |typ| {
-    una_node.type = typ;
+  const child_type = una.child.getType() orelse unreachable;
+
+  if( child_type.getUnaryOperationResultType(una.operator) ) |res_type| {
+    una.constantness = una.child.getConstantness();
+    una.type = res_type;
+
+    return {};
+
   } else {
+
+    // TODO add a thing to avoid duplicated diagnostics
     try self.diagnostics.pushError(
-      "'{}' doesn't support the '{s}' unary operation.",
-      .{ child_type, @tagName(una_node.operator) },
-      una_node.getStartLocation(), una_node.getEndLocation()
+      "Type '{}' doesn't support the unary operation '{s}'.",
+      .{ child_type, @tagName(una.operator) },
+      una.getStartLocation(), una.getEndLocation(),
     );
 
     self.errors += 1;
+    return null;
   }
 }
 
+/// Resolves the type of the given binary expression.
+///
+fn resolveBinaryExpression(
+  self: *TypeResolver,
+  bin: *ast.BinaryExpressionNode
+) Error!?void {
+  // resolveExpression already checks if the node is resolved
 
+  (try self.resolveExpression(bin.left)) orelse return null;
+  (try self.resolveExpression(bin.right)) orelse return null;
 
-const TraverserFns = trv.TraverserFns(*TypeResolver, Error, true);
+  const lhs_type = bin.left.getType() orelse unreachable;
+  const rhs_type = bin.right.getType() orelse unreachable;
+
+  if( lhs_type.getBinaryOperationResultType(bin.operator, rhs_type) ) |res_type| {
+    const left_cstness = bin.left.getConstantness();
+    const right_cstness = bin.right.getConstantness();
+
+    bin.constantness = left_cstness.mix(right_cstness);
+    bin.type = res_type;
+
+    return {};
+
+  } else {
+
+    // TODO avoid adding duplicate diagnostics
+    try self.diagnostics.pushError(
+      "'{}' and '{}' cannot be coerced together",
+      .{ lhs_type, rhs_type },
+      bin.getStartLocation(), bin.getEndLocation()
+    );
+
+    self.errors += 1;
+    return null;
+  }
+}
 
 
 
 pub const Error = error {
   invalid_ast_state,
-} || IdentifierStorage.BindingError || Diagnostics.Error;
+
+  unresolved_type,
+} || Evaluator.Error || IdentifierStorage.BindingError || Diagnostics.Error;

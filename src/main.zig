@@ -55,12 +55,22 @@ pub fn main() anyerror!void {
   var id_resolver = IdResolver.init(
     alloc, &diags, &id_storage
   );
-  defer id_resolver.deinit();
 
   if( id_resolver.processFile(stmts) ) |v| {
     std.log.info("Indentifier resolution: {} (errors: {})", .{ v, id_resolver.errors });
   } else |err| {
-    std.log.info("Error occured: {}", .{ err });
+    std.log.info("[ID] Error occured: {}", .{ err });
+  }
+
+
+  var type_resolver = nl.analysis.TypeResolver.init(
+    alloc, &diags, &id_storage,
+  );
+
+  if( type_resolver.processFile(stmts) ) |v| {
+    std.log.info("Type resolution: {} (errors: {})", .{ v, type_resolver.errors });
+  } else |err| {
+    std.log.info("[Type] Error occured: {}", .{ err });
   }
 
   for( stmts ) |stmt| {
@@ -71,8 +81,3 @@ pub fn main() anyerror!void {
   }
 
 }
-
-// 1. resolve IDs in the entry file
-// 2. find entry points
-//    if no or >1 entry points -> error
-// 3. full resolution of the entry point and its dependencies

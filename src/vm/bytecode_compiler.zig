@@ -74,6 +74,8 @@ pub fn compileExpression(
 ) Error!Type {
   // stack : (-- x)
 
+  // TODO if expr.getValue is not null, use a loadData instead
+
   return switch( expr.* ) {
     .identifier => |id| try self.compileIdentifier(&id, type_hint),
     .integer => |int| try self.compileInteger(&int, type_hint),
@@ -81,7 +83,8 @@ pub fn compileExpression(
     .binary => |bin| try self.compileBinaryExpr(&bin, type_hint),
     .unary => @panic("NYI"), // TODO support unary expr
     .call => @panic("NYI"), // TODO support call expr
-    .group => |grp| try self.compileExpression(grp.child, type_hint)
+    .group => |grp| try self.compileExpression(grp.child, type_hint),
+    .field => @panic("NYI"),
   };
 }
 
@@ -153,19 +156,7 @@ pub fn compileInteger(
   int: *const ast.IntegerNode,
   type_hint: ?Type,
 ) Error!Type {
-  const variant = switch( int.type_flag ) {
-    .ct => Variant { .ct_int = int.value },
-    .i1 => Variant { .i1 = @intCast(i8, int.value) },
-    .i2 => Variant { .i2 = @intCast(i16, int.value) },
-    .i4 => Variant { .i4 = @intCast(i32, int.value) },
-    .i8 => Variant { .i8 = @intCast(i64, int.value) },
-    .u1 => Variant { .u1 = @intCast(u8, int.value) },
-    .u2 => Variant { .u2 = @intCast(u16, int.value) },
-    .u4 => Variant { .u4 = @intCast(u32, int.value) },
-    .u8 => Variant { .u8 = @intCast(u64, int.value) },
-    .iptr => Variant { .iptr = @intCast(isize, int.value) },
-    .uptr => Variant { .uptr = @intCast(usize, int.value) },
-  };
+  const variant = int.getValue();
 
   try self.writer.writeLoadData(variant);
 
@@ -304,6 +295,9 @@ fn emitTypeCoercion(
   start_loc: nl.diagnostic.Location,
   end_loc: nl.diagnostic.Location,
 ) Error!void {
+  if( from.isSameAs(to) )
+    return;
+
   if( !from.canBeCoercedTo(to) ) {
     try self.diagnostics.pushError(
       "A value of type '{}' cannot be coerced to '{}'.",

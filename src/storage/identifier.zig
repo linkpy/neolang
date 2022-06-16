@@ -102,6 +102,8 @@ pub fn scope(
 
 
 
+// Builtin identifiers.
+//
 pub const Builtin = enum(IdentifierID) {
   ct_int,
   i1, i2, i4, i8,
@@ -112,6 +114,8 @@ pub const Builtin = enum(IdentifierID) {
 
 
 
+  /// Gets the ID of the given builtin.
+  ///
   pub fn id(
     self: Builtin
   ) IdentifierID {
@@ -121,6 +125,8 @@ pub const Builtin = enum(IdentifierID) {
 
 
 
+/// Registers the builtin identifiers.
+///
 pub fn registerBuiltins(
   self: *IdentifierStorage
 ) Allocator.Error!void {
@@ -139,6 +145,8 @@ pub fn registerBuiltins(
   try self.newBuiltinType(Type.TypeT);
 }
 
+/// Registers a new builtin identifier.
+///
 fn newBuiltin(
   self: *IdentifierStorage,
   entry: Entry
@@ -152,19 +160,18 @@ fn newBuiltin(
   e.builtin = true;
 }
 
+/// Registers a new builtin identifier with an associated type.
+///
 fn newBuiltinType(
   self: *IdentifierStorage,
   typ: Type
 ) Allocator.Error!void {
+  var entry: Entry = undefined;
+  entry.expr.constantness = .constant;
+  entry.expr.type = Type.TypeT;
+  entry.expr.value = Variant { .type = typ };
 
-  try self.newBuiltin(Entry {
-    .id = undefined,
-    .data = .{ .expression = .{
-      .constantness = .constant,
-      .type = Type.TypeT,
-    }},
-    .value = Variant { .type = typ },
-  });
+  try self.newBuiltin(entry);
 }
 
 
@@ -198,6 +205,8 @@ pub const Scope = struct {
 
 
 
+  /// Binds the builtin identifiers to the scope.
+  ///
   pub fn bindBuiltins(
     self: *Scope
   ) Allocator.Error!void {
@@ -309,6 +318,8 @@ pub const Scope = struct {
 
 
 
+  /// Clears the bindings.
+  ///
   pub fn clearBindings(
     self: *Scope
   ) void {
@@ -336,22 +347,16 @@ pub const Entry = struct {
   is_being_defined: bool = false,
 
   /// Additional data associated with the identifier.
-  data: Data = .{ .none = {} },
-  /// Compile-time value of the identifier.
-  value: Variant = .none,
+  expr: ExpressionData = .{},
 
 
 
-  pub const Data = union(enum) {
-    none: void,
-    expression: Expression,
-
-
-
-    pub const Expression = struct {
-      constantness: nl.ast.ConstantExpressionFlag = .unknown,
-      type: ?Type,
-    };
+  /// Expression data associated with the identifier.
+  ///
+  pub const ExpressionData = struct {
+    constantness: nl.ast.ConstantExpressionFlag = .unknown,
+    type: ?Type = null,
+    value: ?Variant = null,
   };
 };
 

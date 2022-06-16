@@ -17,9 +17,7 @@ end
 proc main 
   is entry_point
 begin
-  // fib 4 requires full resolution:pfhttps://github.com/libusb/libusb/blob/master/.private/ci-build.sh
   imm fib4 = fib 4.
 
-  // std requires full resolution
   std/io/printFmt "(fib 4) = {}", [fib4].
 end

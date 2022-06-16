@@ -11,6 +11,7 @@ const flags = nl.ast.flags;
 const Location = nl.diagnostic.Location;
 const Type = nl.types.Type;
 const IdentifierID = nl.storage.Identifier.IdentifierID;
+const Variant = nl.vm.Variant;
 
 const IdentifierNode = @This();
 
@@ -32,6 +33,8 @@ identifier_id: ?IdentifierID = null,
 constantness: flags.ConstantExpressionFlag = .unknown,
 /// Cached type of the identifier.
 type: ?Type = null,
+/// Cached value of the identifier.
+value: ?Variant = null,
 
 
 
@@ -83,6 +86,14 @@ pub fn getType(
   self: IdentifierNode
 ) ?Type {
   return self.type;
+}
+
+/// Gets the cached value of the identifier.
+///
+pub fn getValue(
+  self: IdentifierNode
+) ?Variant {
+  return self.value;
 }
 
 

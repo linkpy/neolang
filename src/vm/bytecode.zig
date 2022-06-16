@@ -288,7 +288,7 @@ fn ophLoadId(
   inst: Instruction
 ) State.StepResult {
   const id = inst.data.id;
-  const value = state.identifiers.getEntry(id).?.value;
+  const value = state.identifiers.getEntry(id).?.expr.value.?;
   state.push(value);
   return .{ .not_finished = {} };
 }

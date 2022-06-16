@@ -11,6 +11,7 @@ const flags = nl.ast.flags;
 const Location = nl.diagnostic.Location;
 const Type = nl.types.Type;
 const ExpressionNode = nl.ast.ExpressionNode;
+const Variant = nl.vm.Variant;
 
 const UnaryExpressionNode = @This();
 
@@ -26,8 +27,8 @@ start_location: Location,
 
 /// Constantness of the expression node.
 constantness: flags.ConstantExpressionFlag = .unknown,
-/// Type of the expression node.
 type: ?Type = null,
+value: ?Variant = null,
 
 
 
@@ -79,7 +80,15 @@ pub fn getConstantness(
 pub fn getType(
   self: UnaryExpressionNode
 ) ?Type {
-  return self.child.getType();
+  return self.type;
+}
+
+/// Gets the cached value of the expression node.
+///
+pub fn getValue(
+  self: UnaryExpressionNode
+) ?Variant {
+  return self.value;
 }
 
 

@@ -1,11 +1,2 @@
-const a: u8 = 40u1 + 2u8;
-const b: u8 = a * 2;
-
-proc test
-     is entry_point
-     param some_arg i4
-     param another_arg u8
-     returns i1
-begin
-  const somevalue = a + b + some_arg + another_arg;
-end
+const some_int: myint = 10i8;
+const myint = u4;

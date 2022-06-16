@@ -7,24 +7,26 @@ const std = @import("std");
 
 const nl = @import("../nl.zig");
 const ast = nl.ast;
-const trv = nl.ast.traverser;
 const Diagnostics = nl.diagnostic.Diagnostics;
 const IdentifierStorage = nl.storage.Identifier;
 const Scope = IdentifierStorage.Scope;
+
+const IdNodeList = std.ArrayList(*ast.IdentifierNode);
 
 const IdentifierResolver = @This();
 
 
 
+alloc: std.mem.Allocator,
 /// Diagnostics used in case of error.
 diagnostics: *Diagnostics,
 /// Registered identifiers.
 identifiers: *IdentifierStorage,
 
-/// Scopes.
-scopes: std.ArrayList(Scope),
 /// Number of errors detected.
 errors: usize = 0,
+/// List of unresolved identifiers in the current scope.
+unresolved: IdNodeList,
 
 
 
@@ -36,18 +38,13 @@ pub fn init(
   ids: *IdentifierStorage
 ) IdentifierResolver {
   return IdentifierResolver {
+    .alloc = alloc,
     .diagnostics = diags,
     .identifiers = ids,
-    .scopes = std.ArrayList(Scope).init(alloc)
+    .unresolved = IdNodeList.init(alloc),
   };
 }
 
-pub fn deinit(
-  self: *IdentifierResolver
-) void {
-  for( self.scopes.items ) |*i| i.deinit();
-  self.scopes.deinit();
-}
 
 
 /// Resolves all of the identifiers in a file
@@ -58,189 +55,134 @@ pub fn processFile(
 ) Error!bool {
   self.errors = 0;
 
+  self.unresolved = IdNodeList.init(self.alloc);
+  defer self.unresolved.deinit();
+
   var root_scope = self.identifiers.scope();
+  defer root_scope.deinit();
+
   try root_scope.bindBuiltins();
 
-  try self.scopes.append(root_scope);
-
-
-  defer {
-    for( self.scopes.items ) |*scope| scope.deinit();
-    self.scopes.clearAndFree();
+  // initial pass to register all identifier definitions
+  for( stmts ) |*stmt| {
+    try self.resolveStatement(stmt, &root_scope);
   }
 
-  try self.scoutFile(stmts);
 
-  if( self.errors > 0 )
-    return false;
+  var unresolved = self.unresolved.toOwnedSlice();
+  defer self.alloc.free(unresolved);
 
-  root_scope.clearBindings();
-  try root_scope.bindBuiltins();
+  // try to resolve all of the previously unresolved identifiers due to their
+  // definition being after their usage
+  for( unresolved ) |id_node| {
+    try self.resolveIdentifier(id_node, &root_scope);
+  }
 
-  try self.resolveFile(stmts);
+
+  // if they are still unresolved identifiers, they are errors.
+  for( self.unresolved.items ) |id_node| {
+    try self.diagnostics.pushError(
+      "Usage of undefined identifier '{s}'.", .{ id_node.name },
+      id_node.getStartLocation(), id_node.getEndLocation(),
+    );
+
+    self.errors += 1;
+  }
+
 
   return self.errors == 0;
 }
 
 
 
-fn scoutFile(
+/// Resolves the identifiers within the given statement.
+///
+fn resolveStatement(
   self: *IdentifierResolver,
-  stmts: []ast.StatementNode
+  stmt: *ast.StatementNode,
+  scope: *Scope,
 ) Error!void {
-  for( stmts ) |*stmt| {
-    try trv.traverseStatement(scoutFns, self, stmt);
+  switch( stmt.* ) {
+    .constant => |*cst| try self.resolveConstant(cst, scope),
+    .function => @panic("NYI"), // TODO
   }
 }
 
-const scoutFns: TraverserFns = .{
-  .enterFunctionScope = enterFunctionScope,
-  .exitFunction = exitFunction,
-  .visitIdentifierDefinition = scoutIdentifierDefinition,
-};
-
-fn scoutIdentifierDefinition(
+/// Resolves identifiers within the given constant node.
+///
+fn resolveConstant(
   self: *IdentifierResolver,
-  id: *ast.IdentifierNode
+  cst: *ast.ConstantNode,
+  scope: *Scope,
 ) Error!void {
-  var scope = &self.scopes.items[self.scopes.items.len - 1];
+  const name = cst.name.name;
 
-  if( scope.hasBinding(id.name) ) {
+  if( scope.hasBinding(name) ) {
     try self.diagnostics.pushError(
       "Declaration of '{s}' overshadows a previous declaration.",
-      .{ id.name },
-      id.getStartLocation(), id.getEndLocation()
+      .{ name },
+      cst.name.getStartLocation(), cst.name.getEndLocation()
     );
+
+    // TODO add diagnostic showing previous decl
 
     self.errors += 1;
 
   } else {
-    var entry = try scope.bindEntry(id.name);
-    entry.start_location = id.getStartLocation();
-    entry.end_location = id.getEndLocation();
 
-    id.identifier_id = entry.id;
+    var entry = try scope.bindEntry(name);
+    entry.start_location = cst.name.getStartLocation();
+    entry.end_location = cst.name.getEndLocation();
+
+    cst.name.identifier_id = entry.id;
   }
+
+  if( cst.type ) |*type_expr|
+    try self.resolveExpression(type_expr, scope);
+
+  try self.resolveExpression(&cst.value, scope);
 }
 
 
 
-fn resolveFile(
+/// Resolves the identifiers within the given expression.
+///
+fn resolveExpression(
   self: *IdentifierResolver,
-  stmts: []ast.StatementNode
+  expr: *ast.ExpressionNode,
+  scope: *Scope
 ) Error!void {
-  for( stmts ) |*stmt| {
-    try trv.traverseStatement(resolveFns, self, stmt);
+  switch( expr.* ) {
+    .identifier => |*id| try self.resolveIdentifier(id, scope),
+    .integer,
+    .string => {},
+    .binary => |*bin| {
+      try self.resolveExpression(bin.left, scope);
+      try self.resolveExpression(bin.right, scope);
+    },
+    .unary => |*una| try self.resolveExpression(una.child, scope),
+    .call => @panic("NYI"),
+    .group => |*grp| try self.resolveExpression(grp.child, scope),
+    .field => @panic("NYI"),
   }
 }
 
-const resolveFns: TraverserFns = .{
-  .enterFunctionScope = enterFunctionScope,
-  .exitFunction = exitFunction,
-  .enterConstant = resolveEnterConstant,
-  .exitConstant = resolveExitConstant,
-  .visitIdentifierDefinition = resolveIdentifierDefinition,
-  .visitIdentifierUsage = resolveIdentifierUsage,
-};
-
-fn resolveEnterConstant(
+/// Resolves the given identifier.
+///
+fn resolveIdentifier(
   self: *IdentifierResolver,
-  cst: *ast.ConstantNode
+  id_node: *ast.IdentifierNode,
+  scope: *Scope
 ) Error!void {
-  if( cst.name.identifier_id ) |id| {
-    var entry = self.identifiers.getEntry(id).?;
+  const name = id_node.name;
 
-    entry.is_being_defined = true;
-  }
-}
-
-fn resolveExitConstant(
-  self: *IdentifierResolver,
-  cst: *ast.ConstantNode
-) Error!void {
-  if( cst.name.identifier_id ) |id| {
-    var entry = self.identifiers.getEntry(id).?;
-
-    entry.is_being_defined = false;
-  }
-}
-
-fn resolveIdentifierDefinition(
-  self: *IdentifierResolver,
-  id_node: *ast.IdentifierNode
-) Error!void {
-  var scope: *Scope = &self.scopes.items[self.scopes.items.len - 1];
-
-  if( id_node.identifier_id ) |id| {
-    try scope.bindWith(id_node.name, id);
-  }
-}
-
-fn resolveIdentifierUsage(
-  self: *IdentifierResolver,
-  id_node: *ast.IdentifierNode
-) Error!void {
-  var scope = &self.scopes.items[self.scopes.items.len - 1];
-
-  if( scope.getBinding(id_node.name) ) |id| {
-    const entry = self.identifiers.getEntry(id).?;
-
-    if( entry.is_being_defined ) {
-      try self.diagnostics.pushError(
-        "Invalid recursive use of '{s}'.", .{ id_node.name },
-        id_node.getStartLocation(), id_node.getEndLocation()
-      );
-
-      try self.diagnostics.pushNote(
-        "Recursive declaration of this:", .{}, false,
-        entry.start_location, entry.end_location
-      );
-
-      self.errors += 1;
-
-    } else {
-
-      id_node.identifier_id = id;
-    }
+  if( scope.getBinding(name) ) |id| {
+    id_node.identifier_id = id;
 
   } else {
-
-    try self.diagnostics.pushError(
-      "Usage of undeclared identifier '{s}'.", .{ id_node.name },
-      id_node.getStartLocation(), id_node.getEndLocation()
-    );
-
-    self.errors += 1;
+    try self.unresolved.append(id_node);
   }
 }
-
-
-
-fn enterFunctionScope(
-  self: *IdentifierResolver,
-  fun: *ast.FunctionNode
-) Error!void {
-  _ = fun;
-
-  var parent_scope: *Scope = &self.scopes.items[self.scopes.items.len - 1];
-  var scope = parent_scope.scope();
-
-  try self.scopes.append(scope);
-}
-
-fn exitFunction(
-  self: *IdentifierResolver,
-  fun: *ast.FunctionNode
-) Error!void {
-  _ = fun;
-
-  var scope = self.scopes.pop();
-  scope.deinit();
-}
-
-
-
-const TraverserFns = trv.TraverserFns(*IdentifierResolver, Error, true);
 
 
 

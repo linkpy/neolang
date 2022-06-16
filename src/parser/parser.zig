@@ -31,7 +31,7 @@ lexer: *Lexer,
 token: ?Token,
 
 /// Flags for the next statement.
-next_statement_flags: ast.StatementFlags = .{},
+next_statement_flags: ast.StatementFlags = .{}, // TODO to be removed, stupid
 
 
 
@@ -78,7 +78,7 @@ pub fn parseFile(
     errdefer stmt.deinit(self.alloc);
 
     try self.skipWhitespace();
-    
+
     try list.append(stmt);
   }
 
@@ -88,6 +88,7 @@ pub fn parseFile(
 
 
 // == Statements == //
+
 
 
 /// Parses a statement.
@@ -125,8 +126,8 @@ pub fn parseStatement(
 
   if( stmt.getStatementFlags().show_ast ) {
     std.log.debug("Printing the statement's AST:", .{});
-    ast.printer.printStatementNode( 
-      std.io.getStdOut().writer(), &stmt, 0, false 
+    ast.printer.printStatementNode(
+      std.io.getStdOut().writer(), &stmt, 0, false
     ) catch {};
   }
 
@@ -144,15 +145,13 @@ pub fn parseConstant(
 
   const const_token = try self.expectToken(.kw_const);
 
-  // in case of error, fast-forward until the dot at the end of the const 
+  // in case of error, fast-forward until the dot at the end of the const
   // declaration
   errdefer self.skipTokensUntil(.semicolon) catch {};
-
   try self.skipWhitespace();
 
   var id_node = try self.parseIdentifier();
   errdefer id_node.deinit(self.alloc);
-
   try self.skipWhitespace();
 
   var type_expr: ?ast.ExpressionNode = null;
@@ -160,21 +159,17 @@ pub fn parseConstant(
 
   if( try self.checkToken(.colon) ) {
     self.nextToken();
-
     try self.skipWhitespace();
 
     type_expr = try self.parseExpressionAtom();
-
     try self.skipWhitespace();
   }
 
   _ = try self.expectToken(.equal);
-
   try self.skipWhitespace();
 
   var value_node = try self.parseCallExpression();
   errdefer value_node.deinit(self.alloc);
-
   try self.skipWhitespace();
 
   const semicolon_token = try self.expectToken(.semicolon);
@@ -195,6 +190,7 @@ pub fn parseConstant(
 pub fn parseFunction(
   self: *Parser
 ) Error!ast.FunctionNode {
+  // TODO refactor
   try self.skipWhitespace();
 
   const proc_token = try self.expectToken(.kw_proc);
@@ -398,12 +394,12 @@ pub fn parseCallExpression(
 
 /// Parses a binary expression.
 ///
-/// If no initial left-hand side node is given, tries to parse an unary 
-/// expression node. 
-/// If no binary operator is detected, returns the left-hand side expression 
+/// If no initial left-hand side node is given, tries to parse an unary
+/// expression node.
+/// If no binary operator is detected, returns the left-hand side expression
 /// node alone.
 ///
-/// There is no operator precedence. Expressions are parsed left to right, 
+/// There is no operator precedence. Expressions are parsed left to right,
 /// meaning the left-most binary expression is executed first.
 ///
 pub fn parseBinaryExpression(
@@ -411,7 +407,7 @@ pub fn parseBinaryExpression(
   initial_left_node: ?ast.ExpressionNode,
 ) Error!ast.ExpressionNode {
   var left_node = initial_left_node orelse try self.parseUnaryExpression();
-  errdefer if( initial_left_node == null ) 
+  errdefer if( initial_left_node == null )
     left_node.deinit(self.alloc);
 
   while( try self.parseBinaryOperator() ) |op| {
@@ -641,15 +637,11 @@ pub fn parseFieldAccess(
 
 
 
-// == Expression atoms == // 
+// == Expression atoms == //
 
 
 
-/// Parses an expression atom, which can be :
-/// - an identifier 
-/// - an integer
-/// - a string 
-/// - an expression wrapped in `(` and `)`
+/// Parses an expression atom.
 ///
 pub fn parseExpressionAtom(
   self: *Parser
@@ -673,6 +665,7 @@ pub fn parseExpressionAtom(
       const grp = try self.parseGroup();
       return ast.ExpressionNode { .group = grp };
     },
+    // TODO maybe parse postfix expr here?
     else => {
       try self.diagnostics.pushError(
         "Expected an expression, but got a '{s}' token.",
@@ -804,12 +797,13 @@ pub fn parseGroup(
 
 
 
+// TODO to be removed, stupid
 fn parseStatementFlags(
   self: *Parser,
 ) Error!void {
   if( !try self.checkToken(.pound) )
     return;
-  
+
   self.nextToken();
 
   _ = try self.expectToken(.left_ang);
@@ -831,9 +825,9 @@ fn parseStatementFlags(
 
     try self.skipWhitespace();
 
-    if( !try self.checkToken(.comma) ) 
+    if( !try self.checkToken(.comma) )
       break;
-    
+
     // skip the comma
     self.nextToken();
 
@@ -851,9 +845,9 @@ fn updateNextStatementFlags(
 
   if( eql(u8, id.name, "show_tokens") )
     self.next_statement_flags.show_tokens = true
-  else if( eql(u8, id.name, "show_ast") )
+    else if( eql(u8, id.name, "show_ast") )
     self.next_statement_flags.show_ast = true
-  else
+    else
     return false;
 
   return true;
@@ -874,19 +868,19 @@ fn printStatementTokens(
     const token = (try lexer.readToken()) orelse unreachable;
 
     switch( token.kind ) {
-      .whitespace, .comment => 
-        std.log.debug(" - {s} ({}:{} -> {}:{}) = <skipped>", .{ 
-          @tagName(token.kind), 
+      .whitespace, .comment =>
+        std.log.debug(" - {s} ({}:{} -> {}:{}) = <skipped>", .{
+          @tagName(token.kind),
           token.start_location.line, token.start_location.column,
           token.end_location.line, token.end_location.column,
-        }),
-      else => 
-        std.log.debug(" - {s} ({}:{} -> {}:{}) = '{s}'", .{ 
-          @tagName(token.kind), 
+      }),
+      else =>
+        std.log.debug(" - {s} ({}:{} -> {}:{}) = '{s}'", .{
+          @tagName(token.kind),
           token.start_location.line, token.start_location.column,
           token.end_location.line, token.end_location.column,
           token.value
-        }),
+      }),
     }
   }
 
@@ -894,11 +888,11 @@ fn printStatementTokens(
 
 
 
-// == Token utilities == // 
+// == Token utilities == //
 
 
 
-/// Peeks a token from the input. 
+/// Peeks a token from the input.
 ///
 /// If there is no token in the cache, retrieve a new token from the input then
 /// cache it.
@@ -918,9 +912,9 @@ fn peekToken(
   }
 }
 
-/// Peeks a token from the input, returning an error if the end of file was 
+/// Peeks a token from the input, returning an error if the end of file was
 /// reached.
-/// 
+///
 fn peekTokenNoEOF(
   self: *Parser,
   comptime expected_name: []const u8,
@@ -937,7 +931,7 @@ fn peekTokenNoEOF(
   };
 }
 
-/// Clears the token cache, forcing the next call to `peekChar` to obtain the 
+/// Clears the token cache, forcing the next call to `peekChar` to obtain the
 /// next token from the input.
 ///
 fn nextToken(
@@ -960,7 +954,7 @@ fn checkToken(
   return token.kind == kind;
 }
 
-/// Expects the current token to be of the same kind as `kind` and returns 
+/// Expects the current token to be of the same kind as `kind` and returns
 /// the obtained token after consuming it from the input.
 ///
 /// If the current token isn't, a diagnostic is pushed and an error returned.
@@ -975,9 +969,9 @@ fn expectToken(
       self.nextToken();
       return token;
     }
-    
+
     try self.diagnostics.pushError(
-      "Expected a '{s}' token, but got a '{s}' token.", 
+      "Expected a '{s}' token, but got a '{s}' token.",
       .{ @tagName(kind), @tagName(token.kind) },
       token.start_location,
       token.end_location
@@ -1008,29 +1002,29 @@ fn skipWhitespace(
   while( try self.peekToken() ) |token| {
     if( token.kind != .whitespace and token.kind != .comment )
       break;
-    
+
     self.nextToken();
   }
 }
 
-/// Skips tokens until the given token kind is found. 
+/// Skips tokens until the given token kind is found.
 /// If a token with the given token kind is found, it is skipped as well.
 ///
 /// Used in case of errors in order to put the parser in a valid state after an
-/// invalid syntax. It takes into account parenthesis, square brackets, and 
-/// blocks (pairs of `begin` and `end` token), returning only when the given 
-/// token is found outside of any parenthesis or square brackets pairs and 
+/// invalid syntax. It takes into account parenthesis, square brackets, and
+/// blocks (pairs of `begin` and `end` token), returning only when the given
+/// token is found outside of any parenthesis or square brackets pairs and
 /// outside blocks.
 ///
 /// It is also robust to invalid input (characters not recognized as tokens) in
 /// the source, and simply skips them.
-/// 
+///
 fn skipTokensUntil(
   self: *Parser,
   kind: Token.Kind
 ) Lexer.Error!void {
-  // closing parenthesis, square brackets, and `end` tokens are just ignored 
-  // if no matching opening one is detected while skipping (since the error 
+  // closing parenthesis, square brackets, and `end` tokens are just ignored
+  // if no matching opening one is detected while skipping (since the error
   // causing this function to be called might be in one or more pairs already).
 
   var par_count: usize = 0; // number of parathesis opened
@@ -1072,7 +1066,7 @@ fn isAtEnd(
 ) bool {
   if( self.token != null )
     return false;
-  
+
   return self.lexer.reader.isEndOfFile();
 }
 

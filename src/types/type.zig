@@ -69,6 +69,41 @@ pub const Type = union(enum) {
 
 
 
+  /// Checks if the type is an integer.
+  ///
+  pub fn isInteger(
+    self: Type
+  ) bool {
+    return switch( self ) {
+      .integer => true,
+      else => false,
+    };
+  }
+
+  /// Checks if the type is a boolean.
+  ///
+  pub fn isBoolean(
+    self: Type
+  ) bool {
+    return switch( self ) {
+      .boolean => true,
+      else => false,
+    };
+  }
+
+  /// Checks if the type is a type.
+  ///
+  pub fn isType(
+    self: Type
+  ) bool {
+    return switch( self ) {
+      .type => true,
+      else => false
+    };
+  }
+
+
+
   /// Checks if both types are the same.
   ///
   pub fn isSameAs(

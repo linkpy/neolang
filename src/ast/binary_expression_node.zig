@@ -11,6 +11,7 @@ const flags = nl.ast.flags;
 const Location = nl.diagnostic.Location;
 const Type = nl.types.Type;
 const ExpressionNode = nl.ast.ExpressionNode;
+const Variant = nl.vm.Variant;
 
 const BinaryExpressionNode = @This();
 
@@ -27,14 +28,12 @@ operator: Operator,
 constantness: flags.ConstantExpressionFlag = .unknown,
 /// Type of the expression.
 type: ?Type = null,
+/// Value of the expression.
+value: ?Variant = null,
 
 
 
 /// Deinitializes the node.
-///
-/// #### Parameters
-///
-/// - `alloc`: Allocator used to free used memory.
 ///
 pub fn deinit(
   self: *BinaryExpressionNode,

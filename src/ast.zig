@@ -21,7 +21,7 @@ pub const ArgumentNode = @import("./ast/argument_node.zig");
 // ast-related
 pub const flags = @import("./ast/flags.zig");
 pub const printer = @import("./ast/printer.zig");
-pub const traverser = @import("./ast/traverser.zig");
+//pub const traverser = @import("./ast/traverser.zig"); // seems unused
 
 pub const ConstantExpressionFlag = flags.ConstantExpressionFlag;
 pub const StatementFlags = flags.StatementFlags;
